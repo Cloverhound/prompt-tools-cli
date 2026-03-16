@@ -16,6 +16,54 @@ irm https://raw.githubusercontent.com/Cloverhound/prompt-tools-cli/main/install.
 
 Or download from [Releases](https://github.com/Cloverhound/prompt-tools-cli/releases).
 
+## Getting API Keys
+
+You need at least one TTS provider key to generate prompts, and one STT provider key to transcribe audio.
+
+### Google Cloud (TTS + STT)
+
+One API key covers both Text-to-Speech and Speech-to-Text.
+
+1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+2. Create a project or select an existing one
+3. Enable the [Cloud Text-to-Speech API](https://console.cloud.google.com/apis/library/texttospeech.googleapis.com)
+4. Enable the [Cloud Speech-to-Text API](https://console.cloud.google.com/apis/library/speech.googleapis.com)
+5. Go to [APIs & Services > Credentials](https://console.cloud.google.com/apis/credentials)
+6. Click **Create Credentials > API Key**
+7. Copy the key
+
+New accounts get $300 in free credits. TTS pricing is ~$4 per 1M characters for Neural2 voices, ~$16/1M for Gemini/Chirp3-HD.
+
+### ElevenLabs (TTS)
+
+1. Sign up at [elevenlabs.io](https://elevenlabs.io/)
+2. Go to [Profile + API Key](https://elevenlabs.io/app/settings/api-keys)
+3. Copy your API key
+
+Free tier includes limited characters per month. Paid plans start at $5/mo.
+
+### AssemblyAI (STT)
+
+1. Sign up at [assemblyai.com](https://www.assemblyai.com/)
+2. Go to your [Dashboard](https://www.assemblyai.com/app)
+3. Copy your API key from the sidebar
+
+Free tier includes transcription hours. Pay-as-you-go at $0.37/hour after that.
+
+### Store Your Keys
+
+```bash
+# Interactive setup (recommended for first run)
+prompt-tools setup
+
+# Or set keys individually
+prompt-tools config set-api-key google
+prompt-tools config set-api-key elevenlabs
+prompt-tools config set-api-key assemblyai
+```
+
+Keys are stored in your OS keyring (macOS Keychain / Linux keyring / Windows Credential Manager), never in plain text files.
+
 ## Quick Start
 
 ```bash
