@@ -1,0 +1,35 @@
+version: 2
+
+builds:
+  - binary: prompt-tools
+    env:
+      - CGO_ENABLED=0
+    ldflags:
+      - -s -w
+      - -X github.com/Cloverhound/prompt-tools-cli/cmd.Version={{.Version}}
+    goos:
+      - darwin
+      - linux
+      - windows
+    goarch:
+      - amd64
+      - arm64
+
+archives:
+  - formats:
+      - tar.gz
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    format_overrides:
+      - goos: windows
+        formats:
+          - zip
+
+checksum:
+  name_template: "checksums.txt"
+
+release:
+  github:
+    owner: Cloverhound
+    name: prompt-tools-cli
+  draft: false
+  prerelease: auto
