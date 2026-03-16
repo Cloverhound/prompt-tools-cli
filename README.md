@@ -243,14 +243,41 @@ prompt-tools completion bash > /etc/bash_completion.d/prompt-tools
 prompt-tools completion fish > ~/.config/fish/completions/prompt-tools.fish
 ```
 
-## Claude Code Integration
+## Coding Agent Skill
 
-A Claude Code skill is included in `skill/SKILL.md`. To install:
+A skill file is included at `skill/SKILL.md` that teaches AI coding agents how to use the CLI. Install it for your agent of choice:
 
+**Claude Code (macOS/Linux):**
 ```bash
 mkdir -p ~/.claude/skills/prompt-tools
-cp skill/SKILL.md ~/.claude/skills/prompt-tools/SKILL.md
+curl -fsSL https://raw.githubusercontent.com/Cloverhound/prompt-tools-cli/main/skill/SKILL.md \
+  -o ~/.claude/skills/prompt-tools/SKILL.md
 ```
+
+**Claude Code (Windows PowerShell):**
+```powershell
+New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.claude\skills\prompt-tools"
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/Cloverhound/prompt-tools-cli/main/skill/SKILL.md" `
+  -OutFile "$env:USERPROFILE\.claude\skills\prompt-tools\SKILL.md"
+```
+
+**OpenAI Codex (macOS/Linux):**
+```bash
+mkdir -p ~/.agents/skills/prompt-tools
+curl -fsSL https://raw.githubusercontent.com/Cloverhound/prompt-tools-cli/main/skill/SKILL.md \
+  -o ~/.agents/skills/prompt-tools/SKILL.md
+```
+
+**Cursor (macOS/Linux):**
+```bash
+mkdir -p ~/.cursor/skills/prompt-tools
+curl -fsSL https://raw.githubusercontent.com/Cloverhound/prompt-tools-cli/main/skill/SKILL.md \
+  -o ~/.cursor/skills/prompt-tools/SKILL.md
+```
+
+If the `prompt-tools` binary isn't in your PATH, update the binary path inside the installed skill file.
+
+For project-specific installation, place the skill file in your project directory instead of the user-level folder.
 
 ## Development
 
