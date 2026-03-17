@@ -14,7 +14,11 @@ import (
 	"github.com/Cloverhound/prompt-tools-cli/internal/provider"
 )
 
-const googleTTSEndpoint = "https://texttospeech.googleapis.com/v1"
+const (
+	googleTTSEndpoint = "https://texttospeech.googleapis.com/v1"
+	geminiAPIEndpoint = "https://generativelanguage.googleapis.com/v1beta"
+	geminiNativeSampleRate = 24000 // Gemini API always returns 24kHz linear16 PCM
+)
 
 type GoogleTTS struct {
 	apiKey string
@@ -45,7 +49,199 @@ func isGeminiVoice(name string) bool {
 }
 
 func (g *GoogleTTS) Synthesize(req *provider.TTSRequest) (*provider.TTSResult, error) {
-	// Build request body
+	// Gemini voices use the Generative Language API (API key auth).
+	// Standard voices use Cloud TTS (also API key auth).
+	if isGeminiVoice(req.Voice) || req.Model != "" {
+		return g.synthesizeGemini(req)
+	}
+	return g.synthesizeCloudTTS(req)
+}
+
+// synthesizeGemini uses the Generative Language API for Gemini TTS voices.
+// Returns audio resampled and encoded to match the request parameters.
+// resolveGeminiModel returns the model to use for Gemini TTS.
+// If explicit, uses that. Otherwise queries the API for available TTS models
+// and picks the best one (prefers "pro" over "flash").
+func (g *GoogleTTS) resolveGeminiModel() (string, error) {
+	url := fmt.Sprintf("%s/models?key=%s", geminiAPIEndpoint, g.apiKey)
+	resp, err := http.Get(url)
+	if err != nil {
+		return "", fmt.Errorf("listing Gemini models: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("reading model list: %w", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("Gemini models API error (%d): %s", resp.StatusCode, string(body))
+	}
+
+	var result struct {
+		Models []struct {
+			Name                     string   `json:"name"`
+			SupportedGenerationMethods []string `json:"supportedGenerationMethods"`
+		} `json:"models"`
+	}
+	if err := json.Unmarshal(body, &result); err != nil {
+		return "", fmt.Errorf("parsing model list: %w", err)
+	}
+
+	// Filter to TTS models that support generateContent
+	var ttsModels []string
+	for _, m := range result.Models {
+		if !strings.HasSuffix(m.Name, "-tts") {
+			continue
+		}
+		for _, method := range m.SupportedGenerationMethods {
+			if method == "generateContent" {
+				// Strip "models/" prefix
+				name := strings.TrimPrefix(m.Name, "models/")
+				ttsModels = append(ttsModels, name)
+				break
+			}
+		}
+	}
+
+	if len(ttsModels) == 0 {
+		return "", fmt.Errorf("no Gemini TTS models available")
+	}
+
+	// Prefer "pro" over others
+	for _, m := range ttsModels {
+		if strings.Contains(m, "pro") {
+			return m, nil
+		}
+	}
+	return ttsModels[0], nil
+}
+
+func (g *GoogleTTS) synthesizeGemini(req *provider.TTSRequest) (*provider.TTSResult, error) {
+	model := req.Model
+	if model == "" {
+		var err error
+		model, err = g.resolveGeminiModel()
+		if err != nil {
+			return nil, err
+		}
+		if config.Debug() {
+			fmt.Printf("[DEBUG] Auto-selected Gemini TTS model: %s\n", model)
+		}
+	}
+
+	// Build the text content — Gemini TTS doesn't support SSML, so strip tags
+	text := req.Text
+	if req.SSML != "" {
+		text = req.SSML
+	}
+
+	body := map[string]any{
+		"contents": []map[string]any{
+			{
+				"parts": []map[string]string{
+					{"text": text},
+				},
+			},
+		},
+		"generationConfig": map[string]any{
+			"responseModalities": []string{"AUDIO"},
+			"speechConfig": map[string]any{
+				"voiceConfig": map[string]any{
+					"prebuiltVoiceConfig": map[string]string{
+						"voiceName": req.Voice,
+					},
+				},
+			},
+		},
+	}
+
+	bodyJSON, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+
+	url := fmt.Sprintf("%s/models/%s:generateContent?key=%s", geminiAPIEndpoint, model, g.apiKey)
+
+	if config.Debug() {
+		fmt.Printf("[DEBUG] POST %s/models/%s:generateContent\n", geminiAPIEndpoint, model)
+		fmt.Printf("[DEBUG] Body: %s\n", string(bodyJSON))
+	}
+
+	resp, err := http.Post(url, "application/json", strings.NewReader(string(bodyJSON)))
+	if err != nil {
+		return nil, fmt.Errorf("Gemini TTS request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("reading response: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("Gemini TTS API error (%d): %s", resp.StatusCode, string(respBody))
+	}
+
+	// Parse Gemini response: candidates[0].content.parts[0].inlineData.data
+	var result struct {
+		Candidates []struct {
+			Content struct {
+				Parts []struct {
+					InlineData struct {
+						MimeType string `json:"mimeType"`
+						Data     string `json:"data"`
+					} `json:"inlineData"`
+				} `json:"parts"`
+			} `json:"content"`
+		} `json:"candidates"`
+	}
+	if err := json.Unmarshal(respBody, &result); err != nil {
+		return nil, fmt.Errorf("parsing Gemini response: %w", err)
+	}
+
+	if len(result.Candidates) == 0 || len(result.Candidates[0].Content.Parts) == 0 {
+		return nil, fmt.Errorf("Gemini TTS returned no audio data")
+	}
+
+	pcmData, err := base64.StdEncoding.DecodeString(result.Candidates[0].Content.Parts[0].InlineData.Data)
+	if err != nil {
+		return nil, fmt.Errorf("decoding Gemini audio: %w", err)
+	}
+
+	if config.Debug() {
+		mime := result.Candidates[0].Content.Parts[0].InlineData.MimeType
+		fmt.Printf("[DEBUG] Gemini response: %s, %d bytes PCM\n", mime, len(pcmData))
+	}
+
+	// Gemini returns 24kHz linear16 PCM. Resample to requested rate.
+	if req.SampleRate != geminiNativeSampleRate {
+		pcmData = audio.ResampleLinear16(pcmData, geminiNativeSampleRate, req.SampleRate)
+	}
+
+	// Convert encoding if needed
+	outputData := pcmData
+	outputFormat := audio.EncodingLinear16
+	switch req.Encoding {
+	case audio.EncodingMulaw:
+		outputData = audio.Linear16ToMulaw(pcmData)
+		outputFormat = audio.EncodingMulaw
+	case audio.EncodingAlaw:
+		outputData = audio.Linear16ToAlaw(pcmData)
+		outputFormat = audio.EncodingAlaw
+	case audio.EncodingLinear16:
+		// already linear16
+	}
+
+	return &provider.TTSResult{
+		AudioData:  outputData,
+		Format:     outputFormat,
+		SampleRate: req.SampleRate,
+	}, nil
+}
+
+// synthesizeCloudTTS uses the standard Google Cloud Text-to-Speech API.
+func (g *GoogleTTS) synthesizeCloudTTS(req *provider.TTSRequest) (*provider.TTSResult, error) {
 	var input map[string]string
 	if req.SSML != "" {
 		input = map[string]string{"ssml": req.SSML}
@@ -53,15 +249,10 @@ func (g *GoogleTTS) Synthesize(req *provider.TTSRequest) (*provider.TTSResult, e
 		input = map[string]string{"text": req.Text}
 	}
 
-	// Gemini voices require model_name and use "en-US" as language code
-	gemini := isGeminiVoice(req.Voice)
-
 	langCode := "en-US"
-	if !gemini {
-		parts := strings.SplitN(req.Voice, "-", 3)
-		if len(parts) >= 2 {
-			langCode = parts[0] + "-" + parts[1]
-		}
+	parts := strings.SplitN(req.Voice, "-", 3)
+	if len(parts) >= 2 {
+		langCode = parts[0] + "-" + parts[1]
 	}
 
 	voice := map[string]string{
@@ -87,15 +278,6 @@ func (g *GoogleTTS) Synthesize(req *provider.TTSRequest) (*provider.TTSResult, e
 		"input":       input,
 		"voice":       voice,
 		"audioConfig": audioConfig,
-	}
-
-	// Gemini voices require a model_name parameter
-	if gemini || req.Model != "" {
-		model := req.Model
-		if model == "" {
-			model = "gemini-2.5-pro-tts"
-		}
-		body["model_name"] = model
 	}
 
 	bodyJSON, err := json.Marshal(body)

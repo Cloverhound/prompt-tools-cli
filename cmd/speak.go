@@ -25,17 +25,16 @@ Google voices use two naming styles:
   Structured:  en-US-Neural2-F, en-US-Chirp3-HD-Achernar, en-US-Studio-O
   Gemini:      Achernar, Kore, Puck (bare names — highest quality)
 
-Gemini voices automatically use the gemini-2.5-pro-tts model. Override with --model:
-  gemini-2.5-pro-tts                 Highest quality (default for Gemini voices)
-  gemini-2.5-flash-tts               Fast, good quality
-  gemini-2.5-flash-lite-preview-tts  Fastest, lowest cost
+Gemini voices automatically use the Generative Language API. Override model with --model:
+  gemini-2.5-pro-preview-tts    Highest quality (default for Gemini voices)
+  gemini-2.5-flash-preview-tts  Fast, good quality
 
 Examples:
   prompt-tools speak "Hello world" -o hello.wav
   prompt-tools speak "Hello world" --voice Achernar -o hello.wav
   prompt-tools speak --ssml "<speak>Hello<break time='500ms'/>world</speak>" -o hello.wav
   prompt-tools speak --file script.txt --voice en-US-Studio-O -o prompt.wav
-  prompt-tools speak "Hello" --voice Kore --model gemini-2.5-flash-tts -o hello.wav`,
+  prompt-tools speak "Hello" --voice Kore --model gemini-2.5-flash-preview-tts -o hello.wav`,
 	Args:  cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		text, _ := cmd.Flags().GetString("text")
@@ -171,7 +170,8 @@ Examples:
 		// Write output
 		outputData := result.AudioData
 		ext := strings.ToLower(filepath.Ext(outputPath))
-		if ext == ".wav" && result.Format != audio.EncodingMP3 {
+		alreadyWAV := len(result.AudioData) >= 4 && string(result.AudioData[:4]) == "RIFF"
+		if ext == ".wav" && result.Format != audio.EncodingMP3 && !alreadyWAV {
 			outputData, err = audio.WriteWAV(result.AudioData, result.SampleRate, result.Format)
 			if err != nil {
 				return fmt.Errorf("writing WAV header: %w", err)
@@ -200,7 +200,7 @@ func init() {
 	speakCmd.Flags().Float64("speaking-rate", 0, "Speaking rate multiplier")
 	speakCmd.Flags().Float64("pitch", 0, "Pitch in semitones")
 	speakCmd.Flags().Float64("volume-gain-db", 0, "Volume gain in dB")
-	speakCmd.Flags().String("model", "", "Gemini model (gemini-2.5-pro-tts, gemini-2.5-flash-tts, gemini-2.5-flash-lite-preview-tts)")
+	speakCmd.Flags().String("model", "", "Gemini model (gemini-2.5-pro-preview-tts, gemini-2.5-flash-preview-tts)")
 
 	rootCmd.AddCommand(speakCmd)
 }

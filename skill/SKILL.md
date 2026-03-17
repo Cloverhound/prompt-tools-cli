@@ -54,22 +54,26 @@ prompt-tools batch-transcribe [flags]     # Batch transcribe multiple files
 
 ## Voice Types (Google)
 
-Google Cloud TTS provides several voice model families:
+Google TTS voices use two different APIs (same API key for both):
 
-| Model | Quality | Example Voice Name |
-|---|---|---|
-| **Gemini** | Highest (bare names) | `Achernar`, `Kore`, `Puck` |
-| **Chirp3-HD** | High | `en-US-Chirp3-HD-Achernar` |
-| **Chirp-HD** | High | `en-US-Chirp-HD-D` |
-| **Studio** | High | `en-US-Studio-O` |
-| **Neural2** | Good | `en-US-Neural2-F` |
-| **Wavenet** | Good | `en-US-Wavenet-A` |
-| **Standard** | Basic | `en-US-Standard-A` |
+| Model | Quality | Example Voice Name | Google API |
+|---|---|---|---|
+| **Gemini** | Highest (bare names) | `Achernar`, `Kore`, `Puck` | Generative Language API |
+| **Chirp3-HD** | High | `en-US-Chirp3-HD-Achernar` | Cloud Text-to-Speech API |
+| **Chirp-HD** | High | `en-US-Chirp-HD-D` | Cloud Text-to-Speech API |
+| **Studio** | High | `en-US-Studio-O` | Cloud Text-to-Speech API |
+| **Neural2** | Good | `en-US-Neural2-F` | Cloud Text-to-Speech API |
+| **Wavenet** | Good | `en-US-Wavenet-A` | Cloud Text-to-Speech API |
+| **Standard** | Basic | `en-US-Standard-A` | Cloud Text-to-Speech API |
 
-Gemini voices automatically use the `gemini-2.5-pro-tts` model. Override with `--model`:
-- `gemini-2.5-pro-tts` — Highest quality (default)
-- `gemini-2.5-flash-tts` — Fast, good quality
-- `gemini-2.5-flash-lite-preview-tts` — Fastest, lowest cost
+Gemini voices auto-select the best available model. Override with `--model`:
+- `gemini-2.5-pro-preview-tts` — Highest quality (auto-selected default)
+- `gemini-2.5-flash-preview-tts` — Fast, good quality
+
+**Google Cloud setup requires enabling:**
+1. [Cloud Text-to-Speech API](https://console.cloud.google.com/apis/library/texttospeech.googleapis.com) (for non-Gemini voices)
+2. [Generative Language API](https://console.cloud.google.com/apis/library/generativelanguage.googleapis.com) (for Gemini voices)
+3. [Cloud Speech-to-Text API](https://console.cloud.google.com/apis/library/speech.googleapis.com) (for transcription)
 
 ## Speak Examples
 
@@ -81,7 +85,7 @@ prompt-tools speak "Welcome to customer support." -o welcome.wav
 prompt-tools speak "Welcome to customer support." --voice Achernar -o welcome.wav
 
 # Use a specific Gemini model
-prompt-tools speak "Hello" --voice Kore --model gemini-2.5-flash-tts -o hello.wav
+prompt-tools speak "Hello" --voice Kore --model gemini-2.5-flash-preview-tts -o hello.wav
 
 # SSML with pauses and emphasis
 prompt-tools speak --ssml "<speak>Please hold.<break time='500ms'/>We'll be right with you.</speak>" -o hold.wav

@@ -26,13 +26,18 @@ One API key covers both Text-to-Speech and Speech-to-Text.
 
 1. Go to [Google Cloud Console](https://console.cloud.google.com/)
 2. Create a project or select an existing one
-3. Enable the [Cloud Text-to-Speech API](https://console.cloud.google.com/apis/library/texttospeech.googleapis.com)
-4. Enable the [Cloud Speech-to-Text API](https://console.cloud.google.com/apis/library/speech.googleapis.com)
-5. Go to [APIs & Services > Credentials](https://console.cloud.google.com/apis/credentials)
-6. Click **Create Credentials > API Key**
-7. Copy the key
+3. Enable the [Cloud Text-to-Speech API](https://console.cloud.google.com/apis/library/texttospeech.googleapis.com) (for Neural2, Studio, Wavenet, Chirp voices)
+4. Enable the [Generative Language API](https://console.cloud.google.com/apis/library/generativelanguage.googleapis.com) (for Gemini voices)
+5. Enable the [Cloud Speech-to-Text API](https://console.cloud.google.com/apis/library/speech.googleapis.com) (for transcription)
+6. Go to [APIs & Services > Credentials](https://console.cloud.google.com/apis/credentials)
+7. Click **Create Credentials > API Key**
+8. Click **Edit API Key** and under **API restrictions**, select **Restrict key** and add all three APIs:
+   - Cloud Text-to-Speech API
+   - Generative Language API
+   - Cloud Speech-to-Text API
+9. Copy the key
 
-New accounts get $300 in free credits. TTS pricing is ~$4 per 1M characters for Neural2 voices, ~$16/1M for Gemini/Chirp3-HD.
+New accounts get $300 in free credits. TTS pricing is ~$4 per 1M characters for Neural2 voices, ~$16/1M for Chirp3-HD.
 
 ### ElevenLabs (TTS)
 
@@ -95,17 +100,19 @@ prompt-tools transcribe --file recording.wav
 
 | Model | Quality | Example Voice | Notes |
 |-------|---------|---------------|-------|
-| Gemini | Highest | `Achernar`, `Kore`, `Puck` | Bare names, uses Gemini 2.5 Pro |
-| Chirp3-HD | High | `en-US-Chirp3-HD-Achernar` | Same voices, different model |
-| Studio | High | `en-US-Studio-O` | Studio-grade |
-| Neural2 | Good | `en-US-Neural2-F` | Good default |
-| Wavenet | Good | `en-US-Wavenet-A` | DeepMind Wavenet |
-| Standard | Basic | `en-US-Standard-A` | Concatenative |
+| Model | Quality | Example Voice | API Used | Notes |
+|-------|---------|---------------|----------|-------|
+| Gemini | Highest | `Achernar`, `Kore`, `Puck` | Generative Language | Bare names, auto-selects best model |
+| Chirp3-HD | High | `en-US-Chirp3-HD-Achernar` | Cloud TTS | Same voices, different model |
+| Studio | High | `en-US-Studio-O` | Cloud TTS | Studio-grade |
+| Neural2 | Good | `en-US-Neural2-F` | Cloud TTS | Good default |
+| Wavenet | Good | `en-US-Wavenet-A` | Cloud TTS | DeepMind Wavenet |
+| Standard | Basic | `en-US-Standard-A` | Cloud TTS | Concatenative |
 
-Gemini voices automatically use `gemini-2.5-pro-tts`. Override with `--model`:
+Gemini voices use the [Generative Language API](https://console.cloud.google.com/apis/library/generativelanguage.googleapis.com) (must be enabled separately). The best available Gemini TTS model is auto-selected. Override with `--model`:
 
 ```bash
-prompt-tools speak "Hello" --voice Kore --model gemini-2.5-flash-tts -o hello.wav
+prompt-tools speak "Hello" --voice Kore --model gemini-2.5-flash-preview-tts -o hello.wav
 ```
 
 ### ElevenLabs
