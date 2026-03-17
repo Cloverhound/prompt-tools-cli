@@ -3,6 +3,7 @@ package provider
 // Voice represents a TTS voice.
 type Voice struct {
 	Name              string   `json:"name"`
+	VoiceID           string   `json:"voice_id,omitempty"`
 	Model             string   `json:"model"`
 	LanguageCodes     []string `json:"language_codes"`
 	Gender            string   `json:"gender"`

@@ -29,12 +29,21 @@ Gemini voices automatically use the Generative Language API. Override model with
   gemini-2.5-pro-preview-tts    Highest quality (default for Gemini voices)
   gemini-2.5-flash-preview-tts  Fast, good quality
 
+ElevenLabs voices can be specified by name (e.g., Sarah, Roger) or voice ID.
+ElevenLabs models (override with --model):
+  eleven_v3                     Latest, highest quality (default)
+  eleven_multilingual_v2        High quality, multilingual
+  eleven_flash_v2_5             Fast, low latency
+  eleven_turbo_v2_5             Low latency, multilingual
+
 Examples:
   prompt-tools speak "Hello world" -o hello.wav
   prompt-tools speak "Hello world" --voice Achernar -o hello.wav
   prompt-tools speak --ssml "<speak>Hello<break time='500ms'/>world</speak>" -o hello.wav
   prompt-tools speak --file script.txt --voice en-US-Studio-O -o prompt.wav
-  prompt-tools speak "Hello" --voice Kore --model gemini-2.5-flash-preview-tts -o hello.wav`,
+  prompt-tools speak "Hello" --voice Kore --model gemini-2.5-flash-preview-tts -o hello.wav
+  prompt-tools speak --provider elevenlabs --voice Sarah -o hello.wav
+  prompt-tools speak --provider elevenlabs --voice Sarah --model eleven_v3 -o hello.wav`,
 	Args:  cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		text, _ := cmd.Flags().GetString("text")
@@ -200,7 +209,7 @@ func init() {
 	speakCmd.Flags().Float64("speaking-rate", 0, "Speaking rate multiplier")
 	speakCmd.Flags().Float64("pitch", 0, "Pitch in semitones")
 	speakCmd.Flags().Float64("volume-gain-db", 0, "Volume gain in dB")
-	speakCmd.Flags().String("model", "", "Gemini model (gemini-2.5-pro-preview-tts, gemini-2.5-flash-preview-tts)")
+	speakCmd.Flags().String("model", "", "TTS model (Gemini: gemini-2.5-pro-preview-tts; ElevenLabs: eleven_v3, eleven_multilingual_v2, eleven_flash_v2_5)")
 
 	rootCmd.AddCommand(speakCmd)
 }

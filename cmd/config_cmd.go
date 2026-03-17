@@ -193,9 +193,15 @@ var configSetEncodingCmd = &cobra.Command{
 }
 
 var configSetAPIKeyCmd = &cobra.Command{
-	Use:   "set-api-key <provider>",
+	Use:   "set-api-key <google|elevenlabs|assemblyai>",
 	Short: "Store API key in OS keyring (interactive)",
 	Args:  cobra.ExactArgs(1),
+	ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		if len(args) != 0 {
+			return nil, cobra.ShellCompDirectiveNoFileComp
+		}
+		return []string{"google", "elevenlabs", "assemblyai"}, cobra.ShellCompDirectiveNoFileComp
+	},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		provider := strings.ToLower(args[0])
 		valid := map[string]bool{"google": true, "elevenlabs": true, "assemblyai": true}
@@ -225,9 +231,15 @@ var configSetAPIKeyCmd = &cobra.Command{
 }
 
 var configClearAPIKeyCmd = &cobra.Command{
-	Use:   "clear-api-key <provider>",
+	Use:   "clear-api-key <google|elevenlabs|assemblyai>",
 	Short: "Remove API key from keyring",
 	Args:  cobra.ExactArgs(1),
+	ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		if len(args) != 0 {
+			return nil, cobra.ShellCompDirectiveNoFileComp
+		}
+		return []string{"google", "elevenlabs", "assemblyai"}, cobra.ShellCompDirectiveNoFileComp
+	},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		provider := strings.ToLower(args[0])
 		valid := map[string]bool{"google": true, "elevenlabs": true, "assemblyai": true}

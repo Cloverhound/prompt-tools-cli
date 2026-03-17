@@ -33,10 +33,14 @@ Google voice models (highest to lowest quality):
 Gemini voices use the same star/moon names as Chirp3-HD but are a distinct model
 requiring a model_name parameter (handled automatically by the speak command).
 
+ElevenLabs voices show friendly names (e.g., Sarah, Roger) and voice IDs.
+Either can be used with --voice in the speak command.
+
 Examples:
   prompt-tools voices --language en-US --output table
   prompt-tools voices --language en-US --gender FEMALE
-  prompt-tools voices --provider elevenlabs`,
+  prompt-tools voices --provider elevenlabs
+  prompt-tools voices --provider elevenlabs --gender FEMALE --output table`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		providerName, _ := cmd.Flags().GetString("provider")
 		language, _ := cmd.Flags().GetString("language")

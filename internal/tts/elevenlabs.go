@@ -31,8 +31,11 @@ func init() {
 func (e *ElevenLabsTTS) Name() string { return "elevenlabs" }
 
 func (e *ElevenLabsTTS) Synthesize(req *provider.TTSRequest) (*provider.TTSResult, error) {
-	// ElevenLabs voice ID — the req.Voice field contains the voice ID
-	voiceID := req.Voice
+	// Resolve voice: accept either a voice ID or a friendly name
+	voiceID, err := e.resolveVoiceID(req.Voice)
+	if err != nil {
+		return nil, err
+	}
 
 	text := req.Text
 	if req.SSML != "" {
@@ -46,9 +49,15 @@ func (e *ElevenLabsTTS) Synthesize(req *provider.TTSRequest) (*provider.TTSResul
 		outputFormat = "mp3_44100_128"
 	}
 
+	// Default to eleven_v3; allow override via --model
+	modelID := "eleven_v3"
+	if req.Model != "" {
+		modelID = req.Model
+	}
+
 	body := map[string]any{
 		"text":     text,
-		"model_id": "eleven_multilingual_v2",
+		"model_id": modelID,
 		"voice_settings": map[string]any{
 			"stability":        0.5,
 			"similarity_boost": 0.75,
@@ -128,6 +137,42 @@ func (e *ElevenLabsTTS) Synthesize(req *provider.TTSRequest) (*provider.TTSResul
 	}, nil
 }
 
+// resolveVoiceID resolves a voice name or ID to an ElevenLabs voice ID.
+// If the input matches a voice ID directly, it's returned as-is.
+// Otherwise, it searches by name (case-insensitive).
+func (e *ElevenLabsTTS) resolveVoiceID(voice string) (string, error) {
+	// ElevenLabs voice IDs are 20-char alphanumeric strings.
+	// If it looks like one, use it directly.
+	if len(voice) == 20 && isAlphanumeric(voice) {
+		return voice, nil
+	}
+
+	// Look up by friendly name (match full name or short name before " - ")
+	voices, err := e.ListVoices("")
+	if err != nil {
+		return "", fmt.Errorf("resolving voice name %q: %w", voice, err)
+	}
+	for _, v := range voices {
+		if strings.EqualFold(v.Name, voice) {
+			return v.VoiceID, nil
+		}
+		// Match short name (e.g., "Sarah" matches "Sarah - Mature, Reassuring")
+		if short, _, ok := strings.Cut(v.Name, " - "); ok && strings.EqualFold(short, voice) {
+			return v.VoiceID, nil
+		}
+	}
+	return "", fmt.Errorf("ElevenLabs voice %q not found — use 'prompt-tools voices --provider elevenlabs' to list available voices", voice)
+}
+
+func isAlphanumeric(s string) bool {
+	for _, r := range s {
+		if !((r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9')) {
+			return false
+		}
+	}
+	return true
+}
+
 func (e *ElevenLabsTTS) ListVoices(languageCode string) ([]provider.Voice, error) {
 	url := fmt.Sprintf("%s/voices", elevenlabsEndpoint)
 
@@ -175,7 +220,8 @@ func (e *ElevenLabsTTS) ListVoices(languageCode string) ([]provider.Voice, error
 		}
 
 		voice := provider.Voice{
-			Name:          v.VoiceID,
+			Name:          v.Name,
+			VoiceID:       v.VoiceID,
 			Model:         "ElevenLabs",
 			LanguageCodes: []string{"multilingual"},
 			Gender:        gender,

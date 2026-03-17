@@ -75,6 +75,21 @@ Gemini voices auto-select the best available model. Override with `--model`:
 2. [Generative Language API](https://console.cloud.google.com/apis/library/generativelanguage.googleapis.com) (for Gemini voices)
 3. [Cloud Speech-to-Text API](https://console.cloud.google.com/apis/library/speech.googleapis.com) (for transcription)
 
+## Voice Types (ElevenLabs)
+
+ElevenLabs voices can be specified by friendly name (e.g., `Sarah`, `Roger`) or voice ID. Names are resolved automatically via the API.
+
+| Model | Quality | Notes |
+|---|---|---|
+| **eleven_v3** | Highest | Latest model (default) |
+| **eleven_multilingual_v2** | High | Multilingual |
+| **eleven_flash_v2_5** | Good | Fast, low latency |
+| **eleven_turbo_v2_5** | Good | Low latency, multilingual |
+
+Override model with `--model`. List voices with `prompt-tools voices --provider elevenlabs`.
+
+**ElevenLabs API key requires these permissions:** Text to Speech > Access, Voices > Read, Models > Access.
+
 ## Speak Examples
 
 ```bash
@@ -99,8 +114,11 @@ prompt-tools speak "Hello" --sample-rate 16000 --encoding linear16 -o hello.wav
 # MP3 output
 prompt-tools speak "Hello" --format mp3 -o hello.mp3
 
-# ElevenLabs provider
-prompt-tools speak "Hello" --provider elevenlabs --voice <voice-id> -o hello.wav
+# ElevenLabs provider (by voice name)
+prompt-tools speak "Hello" --provider elevenlabs --voice Sarah -o hello.wav
+
+# ElevenLabs with specific model
+prompt-tools speak "Hello" --provider elevenlabs --voice Sarah --model eleven_multilingual_v2 -o hello.wav
 ```
 
 ## Voice Listing Examples

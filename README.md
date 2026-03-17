@@ -43,7 +43,8 @@ New accounts get $300 in free credits. TTS pricing is ~$4 per 1M characters for 
 
 1. Sign up at [elevenlabs.io](https://elevenlabs.io/)
 2. Go to [Profile + API Key](https://elevenlabs.io/app/settings/api-keys)
-3. Copy your API key
+3. Create an API key with these permissions: **Text to Speech > Access**, **Voices > Read**, **Models > Access**
+4. Copy your API key
 
 Free tier includes limited characters per month. Paid plans start at $5/mo.
 
@@ -98,8 +99,6 @@ prompt-tools transcribe --file recording.wav
 
 400+ voices across multiple model families. Default provider.
 
-| Model | Quality | Example Voice | Notes |
-|-------|---------|---------------|-------|
 | Model | Quality | Example Voice | API Used | Notes |
 |-------|---------|---------------|----------|-------|
 | Gemini | Highest | `Achernar`, `Kore`, `Puck` | Generative Language | Bare names, auto-selects best model |
@@ -117,10 +116,19 @@ prompt-tools speak "Hello" --voice Kore --model gemini-2.5-flash-preview-tts -o 
 
 ### ElevenLabs
 
-Premium natural voices. Output is converted to IVR-compatible formats (mu-law/A-law WAV) automatically.
+Premium natural voices. Output is converted to IVR-compatible formats (mu-law/A-law WAV) automatically. Voices can be specified by name (e.g., `Sarah`, `Roger`) or voice ID.
+
+| Model | Quality | Notes |
+|-------|---------|-------|
+| `eleven_v3` | Highest | Latest model (default) |
+| `eleven_multilingual_v2` | High | Multilingual |
+| `eleven_flash_v2_5` | Good | Fast, low latency |
+| `eleven_turbo_v2_5` | Good | Low latency, multilingual |
 
 ```bash
-prompt-tools speak "Hello" --provider elevenlabs --voice <voice-id> -o hello.wav
+prompt-tools speak "Hello" --provider elevenlabs --voice Sarah -o hello.wav
+prompt-tools speak "Hello" --provider elevenlabs --voice Sarah --model eleven_multilingual_v2 -o hello.wav
+prompt-tools voices --provider elevenlabs --output table
 ```
 
 ## STT Providers
