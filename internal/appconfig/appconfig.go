@@ -76,7 +76,7 @@ func (c *Config) Save() error {
 func Defaults() *Config {
 	return &Config{
 		DefaultProvider:    "google",
-		DefaultVoice:       "en-US-Neural2-F",
+		DefaultVoice:       "en-US-Chirp3-HD-Achernar",
 		DefaultSampleRate:  8000,
 		DefaultEncoding:    "mulaw",
 		DefaultFormat:      "wav",

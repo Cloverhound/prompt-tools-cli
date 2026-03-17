@@ -110,7 +110,7 @@ var transcribeCmd = &cobra.Command{
 
 func init() {
 	transcribeCmd.Flags().String("file", "", "Input audio file (required)")
-	transcribeCmd.Flags().String("provider", "", "STT provider (google, assemblyai)")
+	transcribeCmd.Flags().String("provider", "", "STT provider (google, assemblyai, openai)")
 	transcribeCmd.Flags().String("language", "en-US", "Language hint")
 	transcribeCmd.Flags().String("output-file", "", "Output file (default: stdout)")
 	transcribeCmd.Flags().Bool("timestamps", false, "Include word-level timestamps")

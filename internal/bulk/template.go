@@ -13,9 +13,9 @@ import (
 var templateHeaders = []string{"Filename", "Voice", "Text", "SSML", "Sample Rate", "Encoding", "Notes"}
 
 var templateRows = [][]string{
-	{"welcome.wav", "en-US-Neural2-F", "Welcome to our support line.", "no", "", "", "Main greeting"},
-	{"#holiday.wav", "en-US-Neural2-F", "We are closed for the holiday.", "no", "", "", "Skipped row example"},
-	{"transfer.wav", "en-US-Neural2-F", "<speak>Please hold while we transfer your call.<break time=\"500ms\"/></speak>", "yes", "16000", "linear16", "SSML example"},
+	{"welcome.wav", "en-US-Chirp3-HD-Achernar", "Welcome to our support line.", "no", "", "", "Main greeting"},
+	{"#holiday.wav", "en-US-Chirp3-HD-Achernar", "We are closed for the holiday.", "no", "", "", "Skipped row example"},
+	{"transfer.wav", "en-US-Chirp3-HD-Achernar", "<speak>Please hold while we transfer your call.<break time=\"500ms\"/></speak>", "yes", "16000", "linear16", "SSML example"},
 }
 
 // GenerateTemplate creates a blank template file.

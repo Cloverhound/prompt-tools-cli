@@ -251,7 +251,7 @@ func init() {
 	batchTranscribeCmd.Flags().String("dir", "", "Directory of audio files")
 	batchTranscribeCmd.Flags().String("files", "", "Comma-separated file list")
 	batchTranscribeCmd.Flags().String("glob", "*.wav", "File pattern")
-	batchTranscribeCmd.Flags().String("provider", "", "STT provider")
+	batchTranscribeCmd.Flags().String("provider", "", "STT provider (google, assemblyai, openai)")
 	batchTranscribeCmd.Flags().String("language", "en-US", "Language hint")
 	batchTranscribeCmd.Flags().String("output-dir", "", "Output directory")
 	batchTranscribeCmd.Flags().String("output-format", "text", "Output format: text, json, csv")

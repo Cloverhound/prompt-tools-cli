@@ -25,9 +25,9 @@ var bulkGenerateCmd = &cobra.Command{
 Input format (row 1 = headers, skipped automatically):
 
   Filename        | Voice             | Text                  | SSML | Sample Rate | Encoding | Notes
-  welcome.wav     | en-US-Neural2-F   | Welcome to support.   | no   |             |          | Main greeting
-  #holiday.wav    | en-US-Neural2-F   | Closed for holiday.   | no   |             |          | Skipped
-  es/welcome.wav  | es-MX-Neural2-A   | Bienvenido.           | no   |             |          | Subdirectory
+  welcome.wav     | en-US-Chirp3-HD-Achernar   | Welcome to support.   | no   |             |          | Main greeting
+  #holiday.wav    | en-US-Chirp3-HD-Achernar   | Closed for holiday.   | no   |             |          | Skipped
+  es/welcome.wav  | es-MX-Chirp3-HD-A | Bienvenido.           | no   |             |          | Subdirectory
 
   - Rows starting with # are skipped.
   - Voice, Sample Rate, and Encoding are optional (defaults from config).
@@ -136,8 +136,15 @@ Examples:
 		}
 
 		defaultVoice := cfg.DefaultVoice
-		if defaultVoice == "" {
-			defaultVoice = "en-US-Neural2-F"
+		if defaultVoice == "" || (cfg.DefaultProvider != providerName && cfg.DefaultProvider != "") {
+			switch providerName {
+			case "openai":
+				defaultVoice = "alloy"
+			case "elevenlabs":
+				defaultVoice = "Sarah"
+			default:
+				defaultVoice = "en-US-Chirp3-HD-Achernar"
+			}
 		}
 
 		// Run pipeline

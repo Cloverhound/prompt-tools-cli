@@ -19,8 +19,8 @@ go vet ./...        # Static analysis
 - `internal/output/` — JSON/table/CSV/raw output formatting
 - `internal/keyring/` — API key storage in OS keyring
 - `internal/provider/` — TTSProvider and STTProvider interfaces, registry
-- `internal/tts/` — TTS provider implementations (Google, ElevenLabs)
-- `internal/stt/` — STT provider implementations (Google, AssemblyAI)
+- `internal/tts/` — TTS provider implementations (Google, ElevenLabs, OpenAI)
+- `internal/stt/` — STT provider implementations (Google, AssemblyAI, OpenAI)
 - `internal/audio/` — WAV header generation, PCM/mulaw/alaw conversion
 - `internal/bulk/` — Spreadsheet parsing, template generation, concurrent pipeline
 
@@ -38,6 +38,7 @@ go vet ./...        # Static analysis
 - `GOOGLE_API_KEY` — Google Cloud API key
 - `ELEVENLABS_API_KEY` — ElevenLabs API key
 - `ASSEMBLYAI_API_KEY` — AssemblyAI API key
+- `OPENAI_API_KEY` — OpenAI API key
 
 ## UI Change Checklist
 

@@ -49,7 +49,7 @@ var configShowCmd = &cobra.Command{
 			APIKeys:            make(map[string]string),
 		}
 
-		for _, p := range []string{"google", "elevenlabs", "assemblyai"} {
+		for _, p := range []string{"google", "elevenlabs", "assemblyai", "openai"} {
 			if _, err := keyring.GetAPIKey(p); err == nil {
 				display.APIKeys[p] = "configured"
 			} else {
@@ -62,13 +62,13 @@ var configShowCmd = &cobra.Command{
 }
 
 var configSetProviderCmd = &cobra.Command{
-	Use:   "set-provider <google|elevenlabs>",
+	Use:   "set-provider <google|elevenlabs|openai>",
 	Short: "Set default TTS provider",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		provider := strings.ToLower(args[0])
-		if provider != "google" && provider != "elevenlabs" {
-			return fmt.Errorf("provider must be google or elevenlabs")
+		if provider != "google" && provider != "elevenlabs" && provider != "openai" {
+			return fmt.Errorf("provider must be google, elevenlabs, or openai")
 		}
 		cfg, err := appconfig.Load()
 		if err != nil {
@@ -84,13 +84,13 @@ var configSetProviderCmd = &cobra.Command{
 }
 
 var configSetSTTProviderCmd = &cobra.Command{
-	Use:   "set-stt-provider <google|assemblyai>",
+	Use:   "set-stt-provider <google|assemblyai|openai>",
 	Short: "Set default STT provider",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		provider := strings.ToLower(args[0])
-		if provider != "google" && provider != "assemblyai" {
-			return fmt.Errorf("provider must be google or assemblyai")
+		if provider != "google" && provider != "assemblyai" && provider != "openai" {
+			return fmt.Errorf("provider must be google, assemblyai, or openai")
 		}
 		cfg, err := appconfig.Load()
 		if err != nil {
@@ -193,20 +193,20 @@ var configSetEncodingCmd = &cobra.Command{
 }
 
 var configSetAPIKeyCmd = &cobra.Command{
-	Use:   "set-api-key <google|elevenlabs|assemblyai>",
+	Use:   "set-api-key <google|elevenlabs|assemblyai|openai>",
 	Short: "Store API key in OS keyring (interactive)",
 	Args:  cobra.ExactArgs(1),
 	ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		if len(args) != 0 {
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		}
-		return []string{"google", "elevenlabs", "assemblyai"}, cobra.ShellCompDirectiveNoFileComp
+		return []string{"google", "elevenlabs", "assemblyai", "openai"}, cobra.ShellCompDirectiveNoFileComp
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		provider := strings.ToLower(args[0])
-		valid := map[string]bool{"google": true, "elevenlabs": true, "assemblyai": true}
+		valid := map[string]bool{"google": true, "elevenlabs": true, "assemblyai": true, "openai": true}
 		if !valid[provider] {
-			return fmt.Errorf("provider must be google, elevenlabs, or assemblyai")
+			return fmt.Errorf("provider must be google, elevenlabs, assemblyai, or openai")
 		}
 
 		fmt.Printf("Enter API key for %s: ", provider)
@@ -231,20 +231,20 @@ var configSetAPIKeyCmd = &cobra.Command{
 }
 
 var configClearAPIKeyCmd = &cobra.Command{
-	Use:   "clear-api-key <google|elevenlabs|assemblyai>",
+	Use:   "clear-api-key <google|elevenlabs|assemblyai|openai>",
 	Short: "Remove API key from keyring",
 	Args:  cobra.ExactArgs(1),
 	ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		if len(args) != 0 {
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		}
-		return []string{"google", "elevenlabs", "assemblyai"}, cobra.ShellCompDirectiveNoFileComp
+		return []string{"google", "elevenlabs", "assemblyai", "openai"}, cobra.ShellCompDirectiveNoFileComp
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		provider := strings.ToLower(args[0])
-		valid := map[string]bool{"google": true, "elevenlabs": true, "assemblyai": true}
+		valid := map[string]bool{"google": true, "elevenlabs": true, "assemblyai": true, "openai": true}
 		if !valid[provider] {
-			return fmt.Errorf("provider must be google, elevenlabs, or assemblyai")
+			return fmt.Errorf("provider must be google, elevenlabs, assemblyai, or openai")
 		}
 
 		if err := keyring.DeleteAPIKey(provider); err != nil {

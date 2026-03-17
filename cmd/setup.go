@@ -5,7 +5,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/Cloverhound/prompt-tools-cli/internal/appconfig"
 	"github.com/Cloverhound/prompt-tools-cli/internal/keyring"
 	"github.com/charmbracelet/huh"
 	"github.com/spf13/cobra"
@@ -35,6 +34,7 @@ func runSetup() error {
 				Options(
 					huh.NewOption("Google Cloud TTS  (400+ voices, native IVR formats, SSML support)", "google"),
 					huh.NewOption("ElevenLabs        (Premium natural voices, requires format conversion)", "elevenlabs"),
+					huh.NewOption("OpenAI            (High quality natural voices, simple API)", "openai"),
 				).
 				Value(&ttsProviders),
 		),
@@ -55,6 +55,7 @@ func runSetup() error {
 				Options(
 					huh.NewOption("Google Cloud STT  (Phrase boosting, word timestamps, long audio support)", "google"),
 					huh.NewOption("AssemblyAI        (High accuracy, simple API, automatic punctuation)", "assemblyai"),
+					huh.NewOption("OpenAI            (Whisper & GPT-4o transcription, sync API)", "openai"),
 				).
 				Value(&sttProviders),
 		),
@@ -74,11 +75,6 @@ func runSetup() error {
 	}
 	for _, p := range sttProviders {
 		needsKey[p] = true
-	}
-
-	cfg, err := appconfig.Load()
-	if err != nil {
-		return err
 	}
 
 	// Google key (shared for TTS and STT)
@@ -154,112 +150,33 @@ func runSetup() error {
 		}
 	}
 
-	// Step 4: Default TTS provider
-	if len(ttsProviders) > 1 {
-		var defaultTTS string
-		var ttsOpts []huh.Option[string]
-		for _, p := range ttsProviders {
-			label := p
-			if p == "google" {
-				label = "Google Cloud TTS"
-			} else if p == "elevenlabs" {
-				label = "ElevenLabs"
-			}
-			ttsOpts = append(ttsOpts, huh.NewOption(label, p))
-		}
-		defForm := huh.NewForm(
+	// OpenAI key
+	if needsKey["openai"] {
+		fmt.Println("\n  --- OpenAI ---")
+		var oaiKey string
+		keyForm := huh.NewForm(
 			huh.NewGroup(
-				huh.NewSelect[string]().
-					Title("Default TTS provider").
-					Options(ttsOpts...).
-					Value(&defaultTTS),
+				huh.NewInput().
+					Title("OpenAI API Key").
+					EchoMode(huh.EchoModePassword).
+					Value(&oaiKey),
 			),
 		)
-		if err := defForm.Run(); err != nil {
+		if err := keyForm.Run(); err != nil {
 			return err
 		}
-		cfg.DefaultProvider = defaultTTS
-	} else {
-		cfg.DefaultProvider = ttsProviders[0]
-	}
-
-	// Step 5: Default STT provider
-	if len(sttProviders) > 1 {
-		var defaultSTT string
-		var sttOpts []huh.Option[string]
-		for _, p := range sttProviders {
-			label := p
-			if p == "google" {
-				label = "Google Cloud STT"
-			} else if p == "assemblyai" {
-				label = "AssemblyAI"
+		oaiKey = strings.TrimSpace(oaiKey)
+		if oaiKey != "" {
+			if err := keyring.SetAPIKey("openai", oaiKey); err != nil {
+				return fmt.Errorf("saving OpenAI API key: %w", err)
 			}
-			sttOpts = append(sttOpts, huh.NewOption(label, p))
+			fmt.Println("  ✓ API key saved to system keyring")
 		}
-		defForm := huh.NewForm(
-			huh.NewGroup(
-				huh.NewSelect[string]().
-					Title("Default STT provider").
-					Options(sttOpts...).
-					Value(&defaultSTT),
-			),
-		)
-		if err := defForm.Run(); err != nil {
-			return err
-		}
-		cfg.DefaultSTTProvider = defaultSTT
-	} else {
-		cfg.DefaultSTTProvider = sttProviders[0]
 	}
 
-	// Step 6: Default audio format
-	var audioPreset string
-	audioForm := huh.NewForm(
-		huh.NewGroup(
-			huh.NewSelect[string]().
-				Title("Default audio format for IVR prompts").
-				Options(
-					huh.NewOption("8kHz mu-law WAV  (Standard North American telephony)", "mulaw-8k"),
-					huh.NewOption("8kHz A-law WAV   (Standard European telephony)", "alaw-8k"),
-					huh.NewOption("16kHz PCM WAV    (Wideband / modern systems)", "pcm-16k"),
-					huh.NewOption("MP3              (General purpose)", "mp3"),
-				).
-				Value(&audioPreset),
-		),
-	)
-	if err := audioForm.Run(); err != nil {
-		return err
-	}
-
-	switch audioPreset {
-	case "mulaw-8k":
-		cfg.DefaultFormat = "wav"
-		cfg.DefaultSampleRate = 8000
-		cfg.DefaultEncoding = "mulaw"
-	case "alaw-8k":
-		cfg.DefaultFormat = "wav"
-		cfg.DefaultSampleRate = 8000
-		cfg.DefaultEncoding = "alaw"
-	case "pcm-16k":
-		cfg.DefaultFormat = "wav"
-		cfg.DefaultSampleRate = 16000
-		cfg.DefaultEncoding = "linear16"
-	case "mp3":
-		cfg.DefaultFormat = "mp3"
-		cfg.DefaultSampleRate = 24000
-		cfg.DefaultEncoding = "mp3"
-	}
-
-	// Set default voice
-	cfg.DefaultVoice = "en-US-Neural2-F"
-
-	if err := cfg.Save(); err != nil {
-		return err
-	}
-
-	fmt.Fprintf(os.Stderr, "\n  ✓ Configuration saved to %s\n", appconfig.ConfigDir()+"/config.json")
-	fmt.Fprintf(os.Stderr, "  ✓ API keys stored in system keyring\n")
-	fmt.Fprintf(os.Stderr, "\n  You're all set! Try: prompt-tools speak \"Hello world\" --output hello.wav\n\n")
+	fmt.Fprintf(os.Stderr, "\n  ✓ API keys stored in system keyring\n")
+	fmt.Fprintf(os.Stderr, "\n  You're all set! Try: prompt-tools speak \"Hello world\" --output hello.wav\n")
+	fmt.Fprintf(os.Stderr, "  Customize defaults with: prompt-tools config set-provider, set-voice, set-format, etc.\n\n")
 
 	return nil
 }

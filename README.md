@@ -56,6 +56,17 @@ Free tier includes limited characters per month. Paid plans start at $5/mo.
 
 Free tier includes transcription hours. Pay-as-you-go at $0.37/hour after that.
 
+### OpenAI (TTS + STT)
+
+One API key covers both Text-to-Speech and Speech-to-Text (transcription).
+
+1. Sign up at [platform.openai.com](https://platform.openai.com/)
+2. Go to [API Keys](https://platform.openai.com/api-keys)
+3. Click **Create new secret key**
+4. Copy your API key
+
+Pay-as-you-go pricing. TTS at $0.015/1K characters (tts-1) or $0.030/1K (tts-1-hd). Transcription at $0.006/minute (Whisper) or $0.01/minute (GPT-4o-transcribe).
+
 ### Store Your Keys
 
 ```bash
@@ -66,6 +77,7 @@ prompt-tools setup
 prompt-tools config set-api-key google
 prompt-tools config set-api-key elevenlabs
 prompt-tools config set-api-key assemblyai
+prompt-tools config set-api-key openai
 ```
 
 Keys are stored in your OS keyring (macOS Keychain / Linux keyring / Windows Credential Manager), never in plain text files.
@@ -104,7 +116,7 @@ prompt-tools transcribe --file recording.wav
 | Gemini | Highest | `Achernar`, `Kore`, `Puck` | Generative Language | Bare names, auto-selects best model |
 | Chirp3-HD | High | `en-US-Chirp3-HD-Achernar` | Cloud TTS | Same voices, different model |
 | Studio | High | `en-US-Studio-O` | Cloud TTS | Studio-grade |
-| Neural2 | Good | `en-US-Neural2-F` | Cloud TTS | Good default |
+| Neural2 | Good | `en-US-Neural2-F` | Cloud TTS | Neural voices |
 | Wavenet | Good | `en-US-Wavenet-A` | Cloud TTS | DeepMind Wavenet |
 | Standard | Basic | `en-US-Standard-A` | Cloud TTS | Concatenative |
 
@@ -131,6 +143,22 @@ prompt-tools speak "Hello" --provider elevenlabs --voice Sarah --model eleven_mu
 prompt-tools voices --provider elevenlabs --output table
 ```
 
+### OpenAI
+
+High quality natural voices with a simple API. Output is converted to IVR-compatible formats automatically. Voices: alloy, ash, ballad, coral, echo, fable, nova, onyx, sage, shimmer, verse.
+
+| Model | Quality | Notes |
+|-------|---------|-------|
+| `gpt-4o-mini-tts` | High | Default, most capable |
+| `tts-1` | Standard | Lower latency |
+| `tts-1-hd` | High | High definition |
+
+```bash
+prompt-tools speak "Hello" --provider openai --voice alloy -o hello.wav
+prompt-tools speak "Hello" --provider openai --voice nova --model tts-1-hd -o hello.wav
+prompt-tools voices --provider openai --output table
+```
+
 ## STT Providers
 
 ### Google Cloud STT
@@ -143,6 +171,14 @@ Async transcription with polling, high accuracy, automatic punctuation.
 
 ```bash
 prompt-tools transcribe --file recording.wav --provider assemblyai
+```
+
+### OpenAI
+
+Synchronous transcription using Whisper and GPT-4o models. Supports word timestamps and phrase boosting via prompt.
+
+```bash
+prompt-tools transcribe --file recording.wav --provider openai
 ```
 
 ## Bulk Processing
@@ -168,10 +204,10 @@ prompt-tools bulk generate --file prompts.csv --output-dir ./output \
 
 | Filename | Voice | Text | SSML | Sample Rate | Encoding | Notes |
 |----------|-------|------|------|-------------|----------|-------|
-| welcome.wav | en-US-Neural2-F | Welcome to support. | no | | | Main greeting |
-| es-MX/welcome.wav | es-MX-Neural2-A | Bienvenido. | no | | | Subdirectory |
+| welcome.wav | en-US-Chirp3-HD-Achernar | Welcome to support. | no | | | Main greeting |
+| es-MX/welcome.wav | es-MX-Chirp3-HD-A | Bienvenido. | no | | | Subdirectory |
 | transfer.wav | Achernar | Hold please. | no | | | Gemini voice |
-| #holiday.wav | en-US-Neural2-F | Closed for holiday. | no | | | Skipped |
+| #holiday.wav | en-US-Chirp3-HD-Achernar | Closed for holiday. | no | | | Skipped |
 
 - Rows starting with `#` are skipped
 - Voice, Sample Rate, and Encoding are optional (defaults from config)
@@ -199,11 +235,12 @@ prompt-tools setup                          # Interactive wizard
 prompt-tools config set-api-key google      # Set Google API key
 prompt-tools config set-api-key elevenlabs  # Set ElevenLabs API key
 prompt-tools config set-api-key assemblyai  # Set AssemblyAI API key
+prompt-tools config set-api-key openai      # Set OpenAI API key
 prompt-tools config clear-api-key google    # Remove a key
 prompt-tools config show                    # Show config and key status
 ```
 
-Key resolution order: environment variable (`GOOGLE_API_KEY`, `ELEVENLABS_API_KEY`, `ASSEMBLYAI_API_KEY`) > OS keyring.
+Key resolution order: environment variable (`GOOGLE_API_KEY`, `ELEVENLABS_API_KEY`, `ASSEMBLYAI_API_KEY`, `OPENAI_API_KEY`) > OS keyring.
 
 ## Audio Formats
 

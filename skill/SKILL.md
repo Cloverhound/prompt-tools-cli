@@ -1,6 +1,6 @@
 ---
 name: prompt-tools
-description: "Prompt Tools CLI: generate IVR/contact center audio prompts via text-to-speech (Google Cloud TTS, Gemini TTS, ElevenLabs) and transcribe audio via speech-to-text (Google Cloud STT, AssemblyAI). Use for generating prompts, listing voices, bulk processing spreadsheets, and transcribing recordings."
+description: "Prompt Tools CLI: generate IVR/contact center audio prompts via text-to-speech (Google Cloud TTS, Gemini TTS, ElevenLabs, OpenAI) and transcribe audio via speech-to-text (Google Cloud STT, AssemblyAI, OpenAI). Use for generating prompts, listing voices, bulk processing spreadsheets, and transcribing recordings."
 argument-hint: "[command or resource-name]"
 allowed-tools: Bash, Read, Grep, Glob
 user-invocable: true
@@ -26,10 +26,11 @@ prompt-tools setup                       # Interactive wizard (recommended for f
 prompt-tools config set-api-key google   # Store Google Cloud API key
 prompt-tools config set-api-key elevenlabs   # Store ElevenLabs API key
 prompt-tools config set-api-key assemblyai   # Store AssemblyAI API key
+prompt-tools config set-api-key openai       # Store OpenAI API key
 prompt-tools config show                 # Show config and API key status
 ```
 
-Or use environment variables: `GOOGLE_API_KEY`, `ELEVENLABS_API_KEY`, `ASSEMBLYAI_API_KEY`.
+Or use environment variables: `GOOGLE_API_KEY`, `ELEVENLABS_API_KEY`, `ASSEMBLYAI_API_KEY`, `OPENAI_API_KEY`.
 
 Key resolution order: environment variable > OS keyring.
 
@@ -90,10 +91,22 @@ Override model with `--model`. List voices with `prompt-tools voices --provider 
 
 **ElevenLabs API key requires these permissions:** Text to Speech > Access, Voices > Read, Models > Access.
 
+## Voice Types (OpenAI)
+
+OpenAI voices: alloy, ash, ballad, coral, echo, fable, nova, onyx, sage, shimmer, verse. All voices are multilingual.
+
+| Model | Quality | Notes |
+|---|---|---|
+| **gpt-4o-mini-tts** | High | Default, most capable |
+| **tts-1** | Standard | Lower latency |
+| **tts-1-hd** | High | High definition |
+
+Override model with `--model`. List voices with `prompt-tools voices --provider openai`.
+
 ## Speak Examples
 
 ```bash
-# Simple text-to-speech (default: 8kHz mu-law WAV, Google Neural2)
+# Simple text-to-speech (default: 8kHz mu-law WAV, Google Chirp3-HD)
 prompt-tools speak "Welcome to customer support." -o welcome.wav
 
 # Use a Gemini voice (highest quality)
@@ -119,6 +132,12 @@ prompt-tools speak "Hello" --provider elevenlabs --voice Sarah -o hello.wav
 
 # ElevenLabs with specific model
 prompt-tools speak "Hello" --provider elevenlabs --voice Sarah --model eleven_multilingual_v2 -o hello.wav
+
+# OpenAI provider
+prompt-tools speak "Hello" --provider openai --voice alloy -o hello.wav
+
+# OpenAI with model override
+prompt-tools speak "Hello" --provider openai --voice nova --model tts-1-hd -o hello.wav
 ```
 
 ## Voice Listing Examples
@@ -135,6 +154,9 @@ prompt-tools voices --language en-US --gender FEMALE
 
 # ElevenLabs voices
 prompt-tools voices --provider elevenlabs
+
+# OpenAI voices
+prompt-tools voices --provider openai --output table
 ```
 
 ## Bulk Processing Examples
@@ -165,8 +187,8 @@ prompt-tools bulk generate --file prompts.xlsx --output-dir ./output --continue-
 
 | Filename | Voice | Text | SSML | Sample Rate | Encoding | Notes |
 |---|---|---|---|---|---|---|
-| welcome.wav | en-US-Neural2-F | Welcome to support. | no | | | Main greeting |
-| #holiday.wav | en-US-Neural2-F | Closed for holiday. | no | | | Skipped (# prefix) |
+| welcome.wav | en-US-Chirp3-HD-Achernar | Welcome to support. | no | | | Main greeting |
+| #holiday.wav | en-US-Chirp3-HD-Achernar | Closed for holiday. | no | | | Skipped (# prefix) |
 | transfer.wav | Achernar | Hold please. | no | | | Gemini voice |
 | es-MX/welcome.wav | es-MX-Neural2-A | Bienvenido. | no | | | Subdirectory |
 
@@ -193,6 +215,9 @@ prompt-tools transcribe --file recording.wav --phrases "IVR,UCCX,Webex"
 # Use AssemblyAI
 prompt-tools transcribe --file recording.wav --provider assemblyai
 
+# Use OpenAI
+prompt-tools transcribe --file recording.wav --provider openai
+
 # Batch transcribe a directory
 prompt-tools batch-transcribe --dir ./recordings --output-dir ./transcripts
 
@@ -211,8 +236,10 @@ prompt-tools config show
 
 # Set defaults
 prompt-tools config set-provider google
+prompt-tools config set-provider openai
 prompt-tools config set-stt-provider assemblyai
-prompt-tools config set-voice en-US-Neural2-F
+prompt-tools config set-stt-provider openai
+prompt-tools config set-voice en-US-Chirp3-HD-Achernar
 prompt-tools config set-format wav
 prompt-tools config set-sample-rate 8000
 prompt-tools config set-encoding mulaw
@@ -220,6 +247,7 @@ prompt-tools config set-encoding mulaw
 # Manage API keys
 prompt-tools config set-api-key google
 prompt-tools config set-api-key elevenlabs
+prompt-tools config set-api-key openai
 prompt-tools config clear-api-key elevenlabs
 ```
 

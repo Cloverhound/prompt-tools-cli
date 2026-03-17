@@ -36,6 +36,12 @@ ElevenLabs models (override with --model):
   eleven_flash_v2_5             Fast, low latency
   eleven_turbo_v2_5             Low latency, multilingual
 
+OpenAI voices: alloy, ash, ballad, coral, echo, fable, nova, onyx, sage, shimmer, verse.
+OpenAI models (override with --model):
+  gpt-4o-mini-tts               Default, high quality
+  tts-1                         Standard quality
+  tts-1-hd                      High definition
+
 Examples:
   prompt-tools speak "Hello world" -o hello.wav
   prompt-tools speak "Hello world" --voice Achernar -o hello.wav
@@ -43,7 +49,9 @@ Examples:
   prompt-tools speak --file script.txt --voice en-US-Studio-O -o prompt.wav
   prompt-tools speak "Hello" --voice Kore --model gemini-2.5-flash-preview-tts -o hello.wav
   prompt-tools speak --provider elevenlabs --voice Sarah -o hello.wav
-  prompt-tools speak --provider elevenlabs --voice Sarah --model eleven_v3 -o hello.wav`,
+  prompt-tools speak --provider elevenlabs --voice Sarah --model eleven_v3 -o hello.wav
+  prompt-tools speak --provider openai --voice alloy -o hello.wav
+  prompt-tools speak --provider openai --voice nova --model tts-1-hd -o hello.wav`,
 	Args:  cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		text, _ := cmd.Flags().GetString("text")
@@ -103,9 +111,18 @@ Examples:
 			}
 		}
 		if voice == "" {
-			voice = cfg.DefaultVoice
-			if voice == "" {
-				voice = "en-US-Neural2-F"
+			// Only use the saved default voice if the provider matches (or is google)
+			if cfg.DefaultVoice != "" && (cfg.DefaultProvider == providerName || cfg.DefaultProvider == "") {
+				voice = cfg.DefaultVoice
+			} else {
+				switch providerName {
+				case "openai":
+					voice = "alloy"
+				case "elevenlabs":
+					voice = "Sarah"
+				default:
+					voice = "en-US-Chirp3-HD-Achernar"
+				}
 			}
 		}
 		if format == "" {
@@ -201,7 +218,7 @@ func init() {
 	speakCmd.Flags().String("ssml", "", "SSML input (mutually exclusive with --text)")
 	speakCmd.Flags().String("file", "", "Read text/SSML from file")
 	speakCmd.Flags().String("voice", "", "Voice name")
-	speakCmd.Flags().String("provider", "", "TTS provider (google, elevenlabs)")
+	speakCmd.Flags().String("provider", "", "TTS provider (google, elevenlabs, openai)")
 	speakCmd.Flags().StringP("output", "o", "", "Output file (required)")
 	speakCmd.Flags().String("format", "", "Audio format: wav, mp3")
 	speakCmd.Flags().Int("sample-rate", 0, "Sample rate in Hz (8000, 16000, 22050, 24000)")
@@ -209,7 +226,7 @@ func init() {
 	speakCmd.Flags().Float64("speaking-rate", 0, "Speaking rate multiplier")
 	speakCmd.Flags().Float64("pitch", 0, "Pitch in semitones")
 	speakCmd.Flags().Float64("volume-gain-db", 0, "Volume gain in dB")
-	speakCmd.Flags().String("model", "", "TTS model (Gemini: gemini-2.5-pro-preview-tts; ElevenLabs: eleven_v3, eleven_multilingual_v2, eleven_flash_v2_5)")
+	speakCmd.Flags().String("model", "", "TTS model (Gemini: gemini-2.5-pro-preview-tts; ElevenLabs: eleven_v3; OpenAI: gpt-4o-mini-tts, tts-1-hd)")
 
 	rootCmd.AddCommand(speakCmd)
 }

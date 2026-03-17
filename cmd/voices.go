@@ -26,7 +26,7 @@ Google voice models (highest to lowest quality):
   Chirp3-HD     en-US-Chirp3-HD-Achernar        Same voices as Gemini, different model
   Chirp-HD      en-US-Chirp-HD-D                HD voices
   Studio        en-US-Studio-O                  Studio-grade voices
-  Neural2       en-US-Neural2-F                 Neural voices (good default)
+  Neural2       en-US-Neural2-F                 Neural voices
   Wavenet       en-US-Wavenet-A                 DeepMind Wavenet
   Standard      en-US-Standard-A                Basic concatenative
 
@@ -36,11 +36,15 @@ requiring a model_name parameter (handled automatically by the speak command).
 ElevenLabs voices show friendly names (e.g., Sarah, Roger) and voice IDs.
 Either can be used with --voice in the speak command.
 
+OpenAI voices: alloy, ash, ballad, coral, echo, fable, nova, onyx, sage, shimmer, verse.
+Default model: gpt-4o-mini-tts. Override with --model (e.g., tts-1-hd).
+
 Examples:
   prompt-tools voices --language en-US --output table
   prompt-tools voices --language en-US --gender FEMALE
   prompt-tools voices --provider elevenlabs
-  prompt-tools voices --provider elevenlabs --gender FEMALE --output table`,
+  prompt-tools voices --provider elevenlabs --gender FEMALE --output table
+  prompt-tools voices --provider openai --output table`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		providerName, _ := cmd.Flags().GetString("provider")
 		language, _ := cmd.Flags().GetString("language")
@@ -94,7 +98,7 @@ Examples:
 }
 
 func init() {
-	voicesCmd.Flags().String("provider", "", "TTS provider (google, elevenlabs)")
+	voicesCmd.Flags().String("provider", "", "TTS provider (google, elevenlabs, openai)")
 	voicesCmd.Flags().String("language", "", "Filter by language code (e.g., en-US)")
 	voicesCmd.Flags().String("gender", "", "Filter by gender (MALE, FEMALE, NEUTRAL)")
 
@@ -108,6 +112,7 @@ func resolveAPIKey(providerName string) (string, error) {
 		"google":     "GOOGLE_API_KEY",
 		"elevenlabs": "ELEVENLABS_API_KEY",
 		"assemblyai": "ASSEMBLYAI_API_KEY",
+		"openai":     "OPENAI_API_KEY",
 	}
 	if envVar, ok := envVars[providerName]; ok {
 		if val := os.Getenv(envVar); val != "" {
