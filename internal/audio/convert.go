@@ -1,25 +1,48 @@
 package audio
 
-import "math"
+import (
+	"math"
+	"math/rand/v2"
+)
 
 // Linear16ToMulaw converts 16-bit PCM samples to 8-bit mu-law.
+// Applies TPDF dithering to decorrelate quantization error.
 func Linear16ToMulaw(pcmData []byte) []byte {
 	numSamples := len(pcmData) / 2
 	mulaw := make([]byte, numSamples)
+	rng := rand.New(rand.NewPCG(0, 42))
 	for i := 0; i < numSamples; i++ {
 		sample := int16(pcmData[i*2]) | int16(pcmData[i*2+1])<<8
-		mulaw[i] = linearToMulaw(sample)
+		// TPDF dithering: triangular noise scaled to mu-law's minimum step size (2 in 16-bit).
+		// Sum of two uniform[-1,1] values gives triangular[-2,2] distribution.
+		dither := (rng.Float64()*2 - 1) + (rng.Float64()*2 - 1)
+		dithered := float64(sample) + dither
+		if dithered > 32767 {
+			dithered = 32767
+		} else if dithered < -32768 {
+			dithered = -32768
+		}
+		mulaw[i] = linearToMulaw(int16(math.Round(dithered)))
 	}
 	return mulaw
 }
 
 // Linear16ToAlaw converts 16-bit PCM samples to 8-bit A-law.
+// Applies TPDF dithering to decorrelate quantization error.
 func Linear16ToAlaw(pcmData []byte) []byte {
 	numSamples := len(pcmData) / 2
 	alaw := make([]byte, numSamples)
+	rng := rand.New(rand.NewPCG(0, 42))
 	for i := 0; i < numSamples; i++ {
 		sample := int16(pcmData[i*2]) | int16(pcmData[i*2+1])<<8
-		alaw[i] = linearToAlaw(sample)
+		dither := (rng.Float64()*2 - 1) + (rng.Float64()*2 - 1)
+		dithered := float64(sample) + dither
+		if dithered > 32767 {
+			dithered = 32767
+		} else if dithered < -32768 {
+			dithered = -32768
+		}
+		alaw[i] = linearToAlaw(int16(math.Round(dithered)))
 	}
 	return alaw
 }
@@ -27,8 +50,7 @@ func Linear16ToAlaw(pcmData []byte) []byte {
 // linearToMulaw converts a 16-bit linear sample to 8-bit mu-law.
 func linearToMulaw(sample int16) byte {
 	const (
-		mulawMax  = 0x1FFF
-		mulawBias = 33
+		mulawBias = 0x84 // 132, per ITU G.711
 		mulawClip = 32635
 	)
 
@@ -86,8 +108,9 @@ func linearToAlaw(sample int16) byte {
 	return byte((exponent << 4) | mantissa) ^ byte(sign)
 }
 
-// ResampleLinear16 resamples 16-bit PCM from srcRate to dstRate.
-// When downsampling, applies a windowed-sinc low-pass filter to prevent aliasing.
+// ResampleLinear16 resamples 16-bit PCM from srcRate to dstRate using
+// polyphase windowed-sinc interpolation. This combines anti-alias filtering
+// and interpolation into a single step for maximum quality.
 func ResampleLinear16(pcmData []byte, srcRate, dstRate int) []byte {
 	if srcRate == dstRate {
 		return pcmData
@@ -99,29 +122,75 @@ func ResampleLinear16(pcmData []byte, srcRate, dstRate int) []byte {
 		src[i] = float64(int16(pcmData[i*2]) | int16(pcmData[i*2+1])<<8)
 	}
 
-	// Apply low-pass filter before downsampling to prevent aliasing.
-	// Cutoff at Nyquist of the target rate.
-	if dstRate < srcRate {
-		src = lowPass(src, srcRate, dstRate/2)
-	}
-
 	ratio := float64(srcRate) / float64(dstRate)
 	numDstSamples := int(float64(numSrcSamples) / ratio)
+
+	// Normalized cutoff frequency (relative to source sample rate).
+	// Use 0.95 * Nyquist to give the transition band room to attenuate
+	// before Nyquist, preventing aliasing energy from leaking through.
+	var fc float64
+	if dstRate < srcRate {
+		// Downsampling: cut at 0.95 * target Nyquist
+		fc = 0.95 * float64(dstRate) / (2.0 * float64(srcRate))
+	} else {
+		// Upsampling: cut at 0.95 * source Nyquist (anti-imaging)
+		fc = 0.95 * 0.5
+	}
+
+	// Kernel half-length sized by zero-crossings of the sinc function.
+	// One zero-crossing occurs every 1/(2*fc) input samples.
+	// 32 zero-crossings per side gives excellent stopband attenuation.
+	const numZeroCrossings = 32
+	halfLen := int(math.Ceil(float64(numZeroCrossings) / (2.0 * fc)))
+	if halfLen < 32 {
+		halfLen = 32
+	}
+	if halfLen > 512 {
+		halfLen = 512
+	}
 
 	result := make([]byte, numDstSamples*2)
 	for i := 0; i < numDstSamples; i++ {
 		srcPos := float64(i) * ratio
-		srcIdx := int(srcPos)
-		frac := srcPos - float64(srcIdx)
+		srcIdx := int(math.Floor(srcPos))
 
-		var sample float64
-		if srcIdx+1 < numSrcSamples {
-			sample = src[srcIdx]*(1-frac) + src[srcIdx+1]*frac
-		} else {
-			sample = src[srcIdx]
+		jMin := srcIdx - halfLen + 1
+		if jMin < 0 {
+			jMin = 0
+		}
+		jMax := srcIdx + halfLen
+		if jMax >= numSrcSamples {
+			jMax = numSrcSamples - 1
 		}
 
-		// Clamp to int16 range
+		var sample float64
+		var weightSum float64
+		for j := jMin; j <= jMax; j++ {
+			d := float64(j) - srcPos
+
+			// Windowed sinc: sinc(2*fc*d) * blackman(d)
+			var sincVal float64
+			arg := 2.0 * fc * d
+			if math.Abs(arg) < 1e-9 {
+				sincVal = 1.0
+			} else {
+				sincVal = math.Sin(math.Pi*arg) / (math.Pi * arg)
+			}
+
+			// Blackman window centered at srcPos, spanning ±halfLen
+			wPos := (d + float64(halfLen)) / float64(2*halfLen)
+			w := 0.42 - 0.5*math.Cos(2*math.Pi*wPos) + 0.08*math.Cos(4*math.Pi*wPos)
+
+			weight := sincVal * w
+			sample += src[j] * weight
+			weightSum += weight
+		}
+
+		// Normalize to preserve amplitude
+		if weightSum != 0 {
+			sample /= weightSum
+		}
+
 		if sample > 32767 {
 			sample = 32767
 		} else if sample < -32768 {
@@ -133,52 +202,4 @@ func ResampleLinear16(pcmData []byte, srcRate, dstRate int) []byte {
 		result[i*2+1] = byte(s >> 8)
 	}
 	return result
-}
-
-// lowPass applies a windowed-sinc FIR low-pass filter.
-func lowPass(samples []float64, sampleRate, cutoffHz int) []float64 {
-	// Filter order scales with the ratio for good stopband attenuation
-	halfLen := sampleRate / cutoffHz * 8
-	if halfLen < 32 {
-		halfLen = 32
-	}
-	if halfLen > 256 {
-		halfLen = 256
-	}
-
-	fc := float64(cutoffHz) / float64(sampleRate)
-	kernel := make([]float64, 2*halfLen+1)
-	var sum float64
-	for i := -halfLen; i <= halfLen; i++ {
-		if i == 0 {
-			kernel[i+halfLen] = 2 * math.Pi * fc
-		} else {
-			x := float64(i)
-			// Sinc
-			sinc := math.Sin(2*math.Pi*fc*x) / x
-			// Blackman window
-			w := 0.42 - 0.5*math.Cos(2*math.Pi*float64(i+halfLen)/float64(2*halfLen)) + 0.08*math.Cos(4*math.Pi*float64(i+halfLen)/float64(2*halfLen))
-			kernel[i+halfLen] = sinc * w
-		}
-		sum += kernel[i+halfLen]
-	}
-	// Normalize
-	for i := range kernel {
-		kernel[i] /= sum
-	}
-
-	// Convolve
-	n := len(samples)
-	out := make([]float64, n)
-	for i := 0; i < n; i++ {
-		var v float64
-		for j := -halfLen; j <= halfLen; j++ {
-			idx := i + j
-			if idx >= 0 && idx < n {
-				v += samples[idx] * kernel[j+halfLen]
-			}
-		}
-		out[i] = v
-	}
-	return out
 }
