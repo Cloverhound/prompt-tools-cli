@@ -1,5 +1,12 @@
 package provider
 
+// AuthConfig carries authentication credentials for a provider.
+type AuthConfig struct {
+	APIKey      string
+	BearerToken string
+	Project     string // GCP project ID for quota/billing (x-goog-user-project header)
+}
+
 // Voice represents a TTS voice.
 type Voice struct {
 	Name              string   `json:"name"`
@@ -22,6 +29,8 @@ type TTSRequest struct {
 	SpeakingRate float64
 	Pitch        float64
 	VolumeGainDb float64
+	Style        string // voice steering prompt (Cloud TTS with OAuth2 only)
+	LanguageCode string // language code for voices without language in the name (default: en-US)
 }
 
 // TTSResult contains the synthesized audio.

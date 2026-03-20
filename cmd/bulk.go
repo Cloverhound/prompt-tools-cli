@@ -24,14 +24,17 @@ var bulkGenerateCmd = &cobra.Command{
 
 Input format (row 1 = headers, skipped automatically):
 
-  Filename        | Voice             | Text                  | SSML | Sample Rate | Encoding | Notes
-  welcome.wav     | en-US-Chirp3-HD-Achernar   | Welcome to support.   | no   |             |          | Main greeting
-  #holiday.wav    | en-US-Chirp3-HD-Achernar   | Closed for holiday.   | no   |             |          | Skipped
-  es/welcome.wav  | es-MX-Chirp3-HD-A | Bienvenido.           | no   |             |          | Subdirectory
+  Filename        | Voice             | Text                  | SSML | Sample Rate | Encoding | Notes         | Style              | Language
+  welcome.wav     | en-US-Chirp3-HD-…| Welcome to support.   | no   |             |          | Main greeting |                    |
+  #holiday.wav    | en-US-Chirp3-HD-…| Closed for holiday.   | no   |             |          | Skipped       |                    |
+  es/welcome.wav  | es-MX-Chirp3-HD-A| Bienvenido.           | no   |             |          | Subdirectory  |                    |
+  gemini.wav      | Achernar          | Welcome to support.  | no   |             |          | Gemini+style  | speak warmly       | en-US
 
   - Rows starting with # are skipped.
-  - Voice, Sample Rate, and Encoding are optional (defaults from config).
+  - Voice, Sample Rate, Encoding, Style, and Language are optional (defaults from config).
   - SSML column: yes/no — whether Text contains SSML markup.
+  - Style column: voice steering prompt (Gemini voices with GCP OAuth2 auth only).
+  - Language column: language code for Gemini voices (default: en-US).
   - Filename supports subdirectories (e.g., en-US/welcome.wav) — folders are created automatically.
 
 Examples:
@@ -124,13 +127,13 @@ Examples:
 			return nil
 		}
 
-		// Resolve API key and create provider
-		apiKey, err := resolveAPIKey(providerName)
+		// Resolve auth and create provider
+		auth, err := resolveAuth(providerName)
 		if err != nil {
 			return err
 		}
 
-		tts, err := provider.NewTTS(providerName, apiKey)
+		tts, err := provider.NewTTS(providerName, auth)
 		if err != nil {
 			return err
 		}

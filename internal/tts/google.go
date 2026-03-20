@@ -15,22 +15,31 @@ import (
 )
 
 const (
-	googleTTSEndpoint = "https://texttospeech.googleapis.com/v1"
-	geminiAPIEndpoint = "https://generativelanguage.googleapis.com/v1beta"
+	googleTTSEndpoint      = "https://texttospeech.googleapis.com/v1"
+	geminiAPIEndpoint      = "https://generativelanguage.googleapis.com/v1beta"
 	geminiNativeSampleRate = 24000 // Gemini API always returns 24kHz linear16 PCM
 )
 
 type GoogleTTS struct {
-	apiKey string
+	apiKey      string
+	bearerToken string
+	project     string
 }
 
-func NewGoogleTTS(apiKey string) provider.TTSProvider {
-	return &GoogleTTS{apiKey: apiKey}
+func NewGoogleTTS(auth provider.AuthConfig) provider.TTSProvider {
+	return &GoogleTTS{apiKey: auth.APIKey, bearerToken: auth.BearerToken, project: auth.Project}
+}
+
+// setProjectHeader adds the x-goog-user-project header if a project is configured.
+func (g *GoogleTTS) setProjectHeader(req *http.Request) {
+	if g.project != "" {
+		req.Header.Set("x-goog-user-project", g.project)
+	}
 }
 
 func init() {
-	provider.RegisterTTS("google", func(apiKey string) provider.TTSProvider {
-		return NewGoogleTTS(apiKey)
+	provider.RegisterTTS("google", func(auth provider.AuthConfig) provider.TTSProvider {
+		return NewGoogleTTS(auth)
 	})
 }
 
@@ -49,12 +58,121 @@ func isGeminiVoice(name string) bool {
 }
 
 func (g *GoogleTTS) Synthesize(req *provider.TTSRequest) (*provider.TTSResult, error) {
-	// Gemini voices use the Generative Language API (API key auth).
-	// Standard voices use Cloud TTS (also API key auth).
 	if isGeminiVoice(req.Voice) || req.Model != "" {
+		// Gemini voice with OAuth2 → Cloud TTS endpoint (enables --style, server-side encoding)
+		if g.bearerToken != "" {
+			return g.synthesizeCloudTTSGemini(req)
+		}
+		// Gemini voice with API key → Generative Language API
 		return g.synthesizeGemini(req)
 	}
 	return g.synthesizeCloudTTS(req)
+}
+
+// synthesizeCloudTTSGemini uses the Cloud TTS endpoint with Bearer auth for Gemini voices.
+// This enables the input.prompt field for voice steering and server-side audio encoding.
+func (g *GoogleTTS) synthesizeCloudTTSGemini(req *provider.TTSRequest) (*provider.TTSResult, error) {
+	input := map[string]string{}
+	if req.SSML != "" {
+		input["ssml"] = req.SSML
+	} else {
+		input["text"] = req.Text
+	}
+	if req.Style != "" {
+		input["prompt"] = req.Style
+	}
+
+	// Resolve model — use explicit model, or default to gemini-2.5-flash-tts (no -preview suffix for Cloud TTS)
+	model := req.Model
+	if model == "" {
+		model = "gemini-2.5-flash-tts"
+	}
+	// Strip -preview suffix if present — Cloud TTS endpoint uses non-preview model names
+	model = strings.Replace(model, "-preview-tts", "-tts", 1)
+
+	langCode := req.LanguageCode
+	if langCode == "" {
+		langCode = "en-US"
+	}
+
+	voice := map[string]string{
+		"languageCode": langCode,
+		"name":         req.Voice,
+		"modelName":    model,
+	}
+
+	audioConfig := map[string]any{
+		"audioEncoding":   audio.GoogleEncoding(req.Encoding),
+		"sampleRateHertz": req.SampleRate,
+	}
+	if req.SpeakingRate != 0 {
+		audioConfig["speakingRate"] = req.SpeakingRate
+	}
+	if req.Pitch != 0 {
+		audioConfig["pitch"] = req.Pitch
+	}
+	if req.VolumeGainDb != 0 {
+		audioConfig["volumeGainDb"] = req.VolumeGainDb
+	}
+
+	body := map[string]any{
+		"input":       input,
+		"voice":       voice,
+		"audioConfig": audioConfig,
+	}
+
+	bodyJSON, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+
+	if config.Debug() {
+		fmt.Printf("[DEBUG] POST %s/text:synthesize (Cloud TTS Gemini, Bearer auth)\n", googleTTSEndpoint)
+		fmt.Printf("[DEBUG] Body: %s\n", string(bodyJSON))
+	}
+
+	url := fmt.Sprintf("%s/text:synthesize", googleTTSEndpoint)
+	httpReq, err := http.NewRequest("POST", url, strings.NewReader(string(bodyJSON)))
+	if err != nil {
+		return nil, err
+	}
+	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("Authorization", "Bearer "+g.bearerToken)
+	g.setProjectHeader(httpReq)
+
+	resp, err := http.DefaultClient.Do(httpReq)
+	if err != nil {
+		return nil, fmt.Errorf("Cloud TTS Gemini request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("reading response: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("Cloud TTS Gemini API error (%d): %s", resp.StatusCode, string(respBody))
+	}
+
+	var result struct {
+		AudioContent string `json:"audioContent"`
+	}
+	if err := json.Unmarshal(respBody, &result); err != nil {
+		return nil, fmt.Errorf("parsing response: %w", err)
+	}
+
+	audioData, err := base64.StdEncoding.DecodeString(result.AudioContent)
+	if err != nil {
+		return nil, fmt.Errorf("decoding audio: %w", err)
+	}
+
+	// Server-side encoding — audio is already in the requested format
+	return &provider.TTSResult{
+		AudioData:  audioData,
+		Format:     req.Encoding,
+		SampleRate: req.SampleRate,
+	}, nil
 }
 
 // synthesizeGemini uses the Generative Language API for Gemini TTS voices.
@@ -80,7 +198,7 @@ func (g *GoogleTTS) resolveGeminiModel() (string, error) {
 
 	var result struct {
 		Models []struct {
-			Name                     string   `json:"name"`
+			Name                       string   `json:"name"`
 			SupportedGenerationMethods []string `json:"supportedGenerationMethods"`
 		} `json:"models"`
 	}
@@ -290,8 +408,25 @@ func (g *GoogleTTS) synthesizeCloudTTS(req *provider.TTSRequest) (*provider.TTSR
 		fmt.Printf("[DEBUG] Body: %s\n", string(bodyJSON))
 	}
 
-	url := fmt.Sprintf("%s/text:synthesize?key=%s", googleTTSEndpoint, g.apiKey)
-	resp, err := http.Post(url, "application/json", strings.NewReader(string(bodyJSON)))
+	var httpReq *http.Request
+	if g.bearerToken != "" {
+		httpReq, err = http.NewRequest("POST", fmt.Sprintf("%s/text:synthesize", googleTTSEndpoint), strings.NewReader(string(bodyJSON)))
+		if err != nil {
+			return nil, err
+		}
+		httpReq.Header.Set("Content-Type", "application/json")
+		httpReq.Header.Set("Authorization", "Bearer "+g.bearerToken)
+	} else {
+		url := fmt.Sprintf("%s/text:synthesize?key=%s", googleTTSEndpoint, g.apiKey)
+		httpReq, err = http.NewRequest("POST", url, strings.NewReader(string(bodyJSON)))
+		if err != nil {
+			return nil, err
+		}
+		httpReq.Header.Set("Content-Type", "application/json")
+	}
+	g.setProjectHeader(httpReq)
+
+	resp, err := http.DefaultClient.Do(httpReq)
 	if err != nil {
 		return nil, fmt.Errorf("Google TTS request failed: %w", err)
 	}
@@ -326,16 +461,36 @@ func (g *GoogleTTS) synthesizeCloudTTS(req *provider.TTSRequest) (*provider.TTSR
 }
 
 func (g *GoogleTTS) ListVoices(languageCode string) ([]provider.Voice, error) {
-	url := fmt.Sprintf("%s/voices?key=%s", googleTTSEndpoint, g.apiKey)
-	if languageCode != "" {
-		url += "&languageCode=" + languageCode
+	var httpReq *http.Request
+	var err error
+
+	if g.bearerToken != "" {
+		reqURL := fmt.Sprintf("%s/voices", googleTTSEndpoint)
+		if languageCode != "" {
+			reqURL += "?languageCode=" + languageCode
+		}
+		httpReq, err = http.NewRequest("GET", reqURL, nil)
+		if err != nil {
+			return nil, err
+		}
+		httpReq.Header.Set("Authorization", "Bearer "+g.bearerToken)
+	} else {
+		reqURL := fmt.Sprintf("%s/voices?key=%s", googleTTSEndpoint, g.apiKey)
+		if languageCode != "" {
+			reqURL += "&languageCode=" + languageCode
+		}
+		httpReq, err = http.NewRequest("GET", reqURL, nil)
+		if err != nil {
+			return nil, err
+		}
 	}
+	g.setProjectHeader(httpReq)
 
 	if config.Debug() {
-		fmt.Printf("[DEBUG] GET %s\n", url)
+		fmt.Printf("[DEBUG] GET %s\n", httpReq.URL.String())
 	}
 
-	resp, err := http.Get(url)
+	resp, err := http.DefaultClient.Do(httpReq)
 	if err != nil {
 		return nil, fmt.Errorf("listing voices: %w", err)
 	}

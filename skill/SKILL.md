@@ -19,18 +19,35 @@ prompt-tools
 
 ## Authentication
 
+### Google Cloud (two options)
+
+**Option 1: GCP OAuth2/ADC (recommended)** — enables `--style` voice steering and server-side encoding:
+```bash
+gcloud auth application-default login   # One-time browser login
+```
+Also supports `GOOGLE_APPLICATION_CREDENTIALS` env var pointing to a service account JSON key file.
+
+**Option 2: API Key** — simpler, works with all voice types except `--style`:
+```bash
+prompt-tools config set-api-key google   # Store in OS keyring
+# or set GOOGLE_API_KEY env var
+```
+
+Google auth resolution order: ADC/OAuth2 > `GOOGLE_API_KEY` env var > OS keyring.
+
+### Other Providers
+
 API keys are stored in the OS keyring. Set them interactively:
 
 ```bash
 prompt-tools setup                       # Interactive wizard (recommended for first run)
-prompt-tools config set-api-key google   # Store Google Cloud API key
 prompt-tools config set-api-key elevenlabs   # Store ElevenLabs API key
 prompt-tools config set-api-key assemblyai   # Store AssemblyAI API key
 prompt-tools config set-api-key openai       # Store OpenAI API key
 prompt-tools config show                 # Show config and API key status
 ```
 
-Or use environment variables: `GOOGLE_API_KEY`, `ELEVENLABS_API_KEY`, `ASSEMBLYAI_API_KEY`, `OPENAI_API_KEY`.
+Or use environment variables: `ELEVENLABS_API_KEY`, `ASSEMBLYAI_API_KEY`, `OPENAI_API_KEY`.
 
 Key resolution order: environment variable > OS keyring.
 
@@ -138,6 +155,13 @@ prompt-tools speak "Hello" --provider openai --voice alloy -o hello.wav
 
 # OpenAI with model override
 prompt-tools speak "Hello" --provider openai --voice nova --model tts-1-hd -o hello.wav
+
+# Voice steering with --style (requires GCP OAuth2 auth)
+prompt-tools speak "Hello world" --voice Achernar --style "speak warmly and professionally" -o hello.wav
+prompt-tools speak "Welcome to support" --voice Kore --style "cheerful and upbeat tone" -o welcome.wav
+
+# Language override for Gemini voices (default: en-US)
+prompt-tools speak "Bonjour le monde" --voice Achernar --language fr-FR -o bonjour.wav
 ```
 
 ## Voice Listing Examples
@@ -185,15 +209,17 @@ prompt-tools bulk generate --file prompts.xlsx --output-dir ./output --continue-
 
 ### Bulk Template Format
 
-| Filename | Voice | Text | SSML | Sample Rate | Encoding | Notes |
-|---|---|---|---|---|---|---|
-| welcome.wav | en-US-Chirp3-HD-Achernar | Welcome to support. | no | | | Main greeting |
-| #holiday.wav | en-US-Chirp3-HD-Achernar | Closed for holiday. | no | | | Skipped (# prefix) |
-| transfer.wav | Achernar | Hold please. | no | | | Gemini voice |
-| es-MX/welcome.wav | es-MX-Neural2-A | Bienvenido. | no | | | Subdirectory |
+| Filename | Voice | Text | SSML | Sample Rate | Encoding | Notes | Style | Language |
+|---|---|---|---|---|---|---|---|---|
+| welcome.wav | en-US-Chirp3-HD-Achernar | Welcome to support. | no | | | Main greeting | | |
+| #holiday.wav | en-US-Chirp3-HD-Achernar | Closed for holiday. | no | | | Skipped (# prefix) | | |
+| transfer.wav | Achernar | Hold please. | no | | | Gemini voice | speak warmly | en-US |
+| es-MX/welcome.wav | es-MX-Neural2-A | Bienvenido. | no | | | Subdirectory | | |
 
 - Row 1 = headers (skipped). Rows starting with `#` = skipped.
-- Columns for Sample Rate and Encoding are optional per-row overrides.
+- Columns for Sample Rate, Encoding, Style, and Language are optional per-row overrides.
+- Style: voice steering prompt (Gemini voices with GCP OAuth2 auth only).
+- Language: language code for Gemini voices (default: en-US).
 - Supports both `.xlsx` and `.csv` input (auto-detected by extension).
 - Filename supports subdirectories (e.g., `en-US/welcome.wav`) — folders are created automatically under `--output-dir`.
 
@@ -243,6 +269,7 @@ prompt-tools config set-voice en-US-Chirp3-HD-Achernar
 prompt-tools config set-format wav
 prompt-tools config set-sample-rate 8000
 prompt-tools config set-encoding mulaw
+prompt-tools config set-gcp-project my-project-id
 
 # Manage API keys
 prompt-tools config set-api-key google

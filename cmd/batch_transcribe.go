@@ -84,13 +84,13 @@ var batchTranscribeCmd = &cobra.Command{
 			return nil
 		}
 
-		// Resolve API key
-		apiKey, err := resolveAPIKey(providerName)
+		// Resolve auth
+		auth, err := resolveAuth(providerName)
 		if err != nil {
 			return err
 		}
 
-		sttProvider, err := provider.NewSTT(providerName, apiKey)
+		sttProvider, err := provider.NewSTT(providerName, auth)
 		if err != nil {
 			return err
 		}

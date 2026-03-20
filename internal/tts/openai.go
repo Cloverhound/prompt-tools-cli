@@ -20,13 +20,13 @@ type OpenAITTS struct {
 	apiKey string
 }
 
-func NewOpenAITTS(apiKey string) provider.TTSProvider {
-	return &OpenAITTS{apiKey: apiKey}
+func NewOpenAITTS(auth provider.AuthConfig) provider.TTSProvider {
+	return &OpenAITTS{apiKey: auth.APIKey}
 }
 
 func init() {
-	provider.RegisterTTS("openai", func(apiKey string) provider.TTSProvider {
-		return NewOpenAITTS(apiKey)
+	provider.RegisterTTS("openai", func(auth provider.AuthConfig) provider.TTSProvider {
+		return NewOpenAITTS(auth)
 	})
 }
 

@@ -18,7 +18,8 @@ go vet ./...        # Static analysis
 - `internal/config/` — Runtime state (debug, dry-run flags)
 - `internal/output/` — JSON/table/CSV/raw output formatting
 - `internal/keyring/` — API key storage in OS keyring
-- `internal/provider/` — TTSProvider and STTProvider interfaces, registry
+- `internal/provider/` — TTSProvider and STTProvider interfaces, registry, AuthConfig
+- `internal/gcpauth/` — GCP Application Default Credentials resolution and token exchange (no SDK)
 - `internal/tts/` — TTS provider implementations (Google, ElevenLabs, OpenAI)
 - `internal/stt/` — STT provider implementations (Google, AssemblyAI, OpenAI)
 - `internal/audio/` — WAV header generation, PCM/mulaw/alaw conversion
@@ -27,7 +28,7 @@ go vet ./...        # Static analysis
 ## Key Conventions
 
 - REST over SDK: Use net/http directly, no Google Cloud SDK
-- API key resolution: flag → env var → OS keyring
+- Auth resolution (Google): ADC/OAuth2 → env var → OS keyring; (others): env var → OS keyring
 - Default audio: 8kHz mu-law WAV (IVR standard)
 - Provider registration: init() functions in tts/ and stt/ packages register with provider.Registry
 - Output formatting: Use output.PrintObject() for structured data, fmt.Fprintf(os.Stderr, ...) for status messages
@@ -35,6 +36,7 @@ go vet ./...        # Static analysis
 
 ## Environment Variables
 
+- `GOOGLE_APPLICATION_CREDENTIALS` — Path to GCP service account JSON key file (ADC)
 - `GOOGLE_API_KEY` — Google Cloud API key
 - `ELEVENLABS_API_KEY` — ElevenLabs API key
 - `ASSEMBLYAI_API_KEY` — AssemblyAI API key

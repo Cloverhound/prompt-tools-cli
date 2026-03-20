@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/Cloverhound/prompt-tools-cli/internal/appconfig"
+	"github.com/Cloverhound/prompt-tools-cli/internal/gcpauth"
 	"github.com/Cloverhound/prompt-tools-cli/internal/keyring"
 	"github.com/Cloverhound/prompt-tools-cli/internal/output"
 	"github.com/Cloverhound/prompt-tools-cli/internal/provider"
@@ -61,12 +62,12 @@ Examples:
 			}
 		}
 
-		apiKey, err := resolveAPIKey(providerName)
+		auth, err := resolveAuth(providerName)
 		if err != nil {
 			return err
 		}
 
-		tts, err := provider.NewTTS(providerName, apiKey)
+		tts, err := provider.NewTTS(providerName, auth)
 		if err != nil {
 			return err
 		}
@@ -105,9 +106,32 @@ func init() {
 	rootCmd.AddCommand(voicesCmd)
 }
 
-// resolveAPIKey resolves an API key from env var or keyring.
-func resolveAPIKey(providerName string) (string, error) {
-	// Check env var first
+// resolveAuth resolves authentication for a provider.
+// For Google: tries ADC (OAuth2) first, then API key (env var or keyring).
+// For other providers: API key only (env var or keyring).
+func resolveAuth(providerName string) (provider.AuthConfig, error) {
+	var auth provider.AuthConfig
+
+	// For Google, load project from config and try ADC/OAuth2 first
+	if providerName == "google" {
+		cfg, err := appconfig.Load()
+		if err == nil {
+			if gc, ok := cfg.Providers["google"]; ok {
+				auth.Project = gc.ProjectID
+			}
+		}
+
+		token, err := gcpauth.GetToken("https://www.googleapis.com/auth/cloud-platform")
+		if err != nil {
+			return provider.AuthConfig{}, fmt.Errorf("GCP auth error: %w", err)
+		}
+		if token != nil {
+			auth.BearerToken = token.AccessToken
+			return auth, nil
+		}
+	}
+
+	// Fall back to API key (env var, then keyring)
 	envVars := map[string]string{
 		"google":     "GOOGLE_API_KEY",
 		"elevenlabs": "ELEVENLABS_API_KEY",
@@ -116,14 +140,19 @@ func resolveAPIKey(providerName string) (string, error) {
 	}
 	if envVar, ok := envVars[providerName]; ok {
 		if val := os.Getenv(envVar); val != "" {
-			return val, nil
+			auth.APIKey = val
+			return auth, nil
 		}
 	}
 
 	// Fall back to keyring
 	key, err := keyring.GetAPIKey(providerName)
 	if err != nil {
-		return "", fmt.Errorf("no API key for %s — set via: prompt-tools config set-api-key %s (or env %s)", providerName, providerName, envVars[providerName])
+		if providerName == "google" {
+			return provider.AuthConfig{}, fmt.Errorf("no Google credentials found — either:\n  1. Run: gcloud auth application-default login (OAuth2, enables --style)\n  2. Set GOOGLE_API_KEY env var\n  3. Run: prompt-tools config set-api-key google")
+		}
+		return provider.AuthConfig{}, fmt.Errorf("no API key for %s — set via: prompt-tools config set-api-key %s (or env %s)", providerName, providerName, envVars[providerName])
 	}
-	return key, nil
+	auth.APIKey = key
+	return auth, nil
 }

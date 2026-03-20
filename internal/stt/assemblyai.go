@@ -19,13 +19,13 @@ type AssemblyAISTT struct {
 	apiKey string
 }
 
-func NewAssemblyAISTT(apiKey string) provider.STTProvider {
-	return &AssemblyAISTT{apiKey: apiKey}
+func NewAssemblyAISTT(auth provider.AuthConfig) provider.STTProvider {
+	return &AssemblyAISTT{apiKey: auth.APIKey}
 }
 
 func init() {
-	provider.RegisterSTT("assemblyai", func(apiKey string) provider.STTProvider {
-		return NewAssemblyAISTT(apiKey)
+	provider.RegisterSTT("assemblyai", func(auth provider.AuthConfig) provider.STTProvider {
+		return NewAssemblyAISTT(auth)
 	})
 }
 

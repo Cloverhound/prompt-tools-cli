@@ -21,13 +21,13 @@ type OpenAISTT struct {
 	apiKey string
 }
 
-func NewOpenAISTT(apiKey string) provider.STTProvider {
-	return &OpenAISTT{apiKey: apiKey}
+func NewOpenAISTT(auth provider.AuthConfig) provider.STTProvider {
+	return &OpenAISTT{apiKey: auth.APIKey}
 }
 
 func init() {
-	provider.RegisterSTT("openai", func(apiKey string) provider.STTProvider {
-		return NewOpenAISTT(apiKey)
+	provider.RegisterSTT("openai", func(auth provider.AuthConfig) provider.STTProvider {
+		return NewOpenAISTT(auth)
 	})
 }
 

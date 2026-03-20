@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/Cloverhound/prompt-tools-cli/internal/appconfig"
+	"github.com/Cloverhound/prompt-tools-cli/internal/gcpauth"
 	"github.com/Cloverhound/prompt-tools-cli/internal/keyring"
 	"github.com/Cloverhound/prompt-tools-cli/internal/output"
 	"github.com/spf13/cobra"
@@ -55,6 +56,13 @@ var configShowCmd = &cobra.Command{
 			} else {
 				display.APIKeys[p] = "not set"
 			}
+		}
+
+		// Show GCP ADC status
+		if gcpauth.HasCredentials() {
+			display.APIKeys["google_adc"] = "configured"
+		} else {
+			display.APIKeys["google_adc"] = "not set"
 		}
 
 		return output.PrintObject(display)
@@ -230,6 +238,26 @@ var configSetAPIKeyCmd = &cobra.Command{
 	},
 }
 
+var configSetGCPProjectCmd = &cobra.Command{
+	Use:   "set-gcp-project <project-id>",
+	Short: "Set GCP project for Google API quota/billing",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		cfg, err := appconfig.Load()
+		if err != nil {
+			return err
+		}
+		gc := cfg.Providers["google"]
+		gc.ProjectID = args[0]
+		cfg.Providers["google"] = gc
+		if err := cfg.Save(); err != nil {
+			return err
+		}
+		fmt.Printf("GCP project set to %s\n", args[0])
+		return nil
+	},
+}
+
 var configClearAPIKeyCmd = &cobra.Command{
 	Use:   "clear-api-key <google|elevenlabs|assemblyai|openai>",
 	Short: "Remove API key from keyring",
@@ -266,5 +294,6 @@ func init() {
 	configCmd.AddCommand(configSetEncodingCmd)
 	configCmd.AddCommand(configSetAPIKeyCmd)
 	configCmd.AddCommand(configClearAPIKeyCmd)
+	configCmd.AddCommand(configSetGCPProjectCmd)
 	rootCmd.AddCommand(configCmd)
 }

@@ -18,13 +18,13 @@ type ElevenLabsTTS struct {
 	apiKey string
 }
 
-func NewElevenLabsTTS(apiKey string) provider.TTSProvider {
-	return &ElevenLabsTTS{apiKey: apiKey}
+func NewElevenLabsTTS(auth provider.AuthConfig) provider.TTSProvider {
+	return &ElevenLabsTTS{apiKey: auth.APIKey}
 }
 
 func init() {
-	provider.RegisterTTS("elevenlabs", func(apiKey string) provider.TTSProvider {
-		return NewElevenLabsTTS(apiKey)
+	provider.RegisterTTS("elevenlabs", func(auth provider.AuthConfig) provider.TTSProvider {
+		return NewElevenLabsTTS(auth)
 	})
 }
 

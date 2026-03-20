@@ -10,12 +10,13 @@ import (
 	"github.com/xuri/excelize/v2"
 )
 
-var templateHeaders = []string{"Filename", "Voice", "Text", "SSML", "Sample Rate", "Encoding", "Notes"}
+var templateHeaders = []string{"Filename", "Voice", "Text", "SSML", "Sample Rate", "Encoding", "Notes", "Style", "Language"}
 
 var templateRows = [][]string{
-	{"welcome.wav", "en-US-Chirp3-HD-Achernar", "Welcome to our support line.", "no", "", "", "Main greeting"},
-	{"#holiday.wav", "en-US-Chirp3-HD-Achernar", "We are closed for the holiday.", "no", "", "", "Skipped row example"},
-	{"transfer.wav", "en-US-Chirp3-HD-Achernar", "<speak>Please hold while we transfer your call.<break time=\"500ms\"/></speak>", "yes", "16000", "linear16", "SSML example"},
+	{"welcome.wav", "en-US-Chirp3-HD-Achernar", "Welcome to our support line.", "no", "", "", "Main greeting", "", ""},
+	{"#holiday.wav", "en-US-Chirp3-HD-Achernar", "We are closed for the holiday.", "no", "", "", "Skipped row example", "", ""},
+	{"transfer.wav", "en-US-Chirp3-HD-Achernar", "<speak>Please hold while we transfer your call.<break time=\"500ms\"/></speak>", "yes", "16000", "linear16", "SSML example", "", ""},
+	{"gemini-welcome.wav", "Achernar", "Welcome to customer support.", "no", "", "", "Gemini voice with style", "speak warmly and professionally", "en-US"},
 }
 
 // GenerateTemplate creates a blank template file.
@@ -52,7 +53,7 @@ func generateExcelTemplate(outputPath string) error {
 	}
 
 	// Set column widths
-	widths := map[string]float64{"A": 20, "B": 22, "C": 50, "D": 6, "E": 14, "F": 12, "G": 25}
+	widths := map[string]float64{"A": 20, "B": 22, "C": 50, "D": 6, "E": 14, "F": 12, "G": 25, "H": 35, "I": 10}
 	for col, w := range widths {
 		f.SetColWidth(sheet, col, col, w)
 	}

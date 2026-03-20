@@ -95,9 +95,11 @@ func Run(rows []Row, tts provider.TTSProvider, cfg PipelineConfig) (*PipelineRes
 
 			// Build TTS request
 			ttsReq := &provider.TTSRequest{
-				Voice:      voice,
-				SampleRate: sampleRate,
-				Encoding:   encoding,
+				Voice:        voice,
+				SampleRate:   sampleRate,
+				Encoding:     encoding,
+				Style:        row.Style,
+				LanguageCode: row.LanguageCode,
 			}
 			if row.IsSSML {
 				ttsReq.SSML = row.Text

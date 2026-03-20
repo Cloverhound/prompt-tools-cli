@@ -29,6 +29,9 @@ Gemini voices automatically use the Generative Language API. Override model with
   gemini-2.5-pro-preview-tts    Highest quality (default for Gemini voices)
   gemini-2.5-flash-preview-tts  Fast, good quality
 
+With GCP OAuth2 auth (gcloud auth application-default login), Gemini voices use the
+Cloud TTS endpoint which enables --style for voice steering and server-side encoding.
+
 ElevenLabs voices can be specified by name (e.g., Sarah, Roger) or voice ID.
 ElevenLabs models (override with --model):
   eleven_v3                     Latest, highest quality (default)
@@ -51,7 +54,9 @@ Examples:
   prompt-tools speak --provider elevenlabs --voice Sarah -o hello.wav
   prompt-tools speak --provider elevenlabs --voice Sarah --model eleven_v3 -o hello.wav
   prompt-tools speak --provider openai --voice alloy -o hello.wav
-  prompt-tools speak --provider openai --voice nova --model tts-1-hd -o hello.wav`,
+  prompt-tools speak --provider openai --voice nova --model tts-1-hd -o hello.wav
+  prompt-tools speak "Hello" --voice Achernar --style "speak warmly and professionally" -o hello.wav
+  prompt-tools speak "Bonjour le monde" --voice Achernar --language fr-FR -o bonjour.wav`,
 	Args:  cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		text, _ := cmd.Flags().GetString("text")
@@ -67,6 +72,8 @@ Examples:
 		pitch, _ := cmd.Flags().GetFloat64("pitch")
 		volumeGainDb, _ := cmd.Flags().GetFloat64("volume-gain-db")
 		model, _ := cmd.Flags().GetString("model")
+		style, _ := cmd.Flags().GetString("style")
+		language, _ := cmd.Flags().GetString("language")
 
 		// Positional arg as text
 		if len(args) > 0 && text == "" && ssml == "" {
@@ -156,6 +163,9 @@ Examples:
 			fmt.Printf("  Sample rate: %d Hz\n", sampleRate)
 			fmt.Printf("  Encoding: %s\n", encoding)
 			fmt.Printf("  Output: %s\n", outputPath)
+			if style != "" {
+				fmt.Printf("  Style: %s\n", style)
+			}
 			if text != "" {
 				fmt.Printf("  Text: %s\n", text)
 			} else {
@@ -164,13 +174,18 @@ Examples:
 			return nil
 		}
 
-		// Resolve API key
-		apiKey, err := resolveAPIKey(providerName)
+		// Resolve auth
+		auth, err := resolveAuth(providerName)
 		if err != nil {
 			return err
 		}
 
-		tts, err := provider.NewTTS(providerName, apiKey)
+		// Validate --style requires GCP OAuth2
+		if style != "" && auth.BearerToken == "" {
+			return fmt.Errorf("--style requires GCP authentication (gcloud auth application-default login)")
+		}
+
+		tts, err := provider.NewTTS(providerName, auth)
 		if err != nil {
 			return err
 		}
@@ -186,6 +201,8 @@ Examples:
 			SpeakingRate: speakingRate,
 			Pitch:        pitch,
 			VolumeGainDb: volumeGainDb,
+			Style:        style,
+			LanguageCode: language,
 		}
 
 		result, err := tts.Synthesize(req)
@@ -227,6 +244,8 @@ func init() {
 	speakCmd.Flags().Float64("pitch", 0, "Pitch in semitones")
 	speakCmd.Flags().Float64("volume-gain-db", 0, "Volume gain in dB")
 	speakCmd.Flags().String("model", "", "TTS model (Gemini: gemini-2.5-pro-preview-tts; ElevenLabs: eleven_v3; OpenAI: gpt-4o-mini-tts, tts-1-hd)")
+	speakCmd.Flags().String("style", "", "Voice steering prompt (Gemini voices with GCP auth only)")
+	speakCmd.Flags().String("language", "", "Language code for Gemini voices (default: en-US)")
 
 	rootCmd.AddCommand(speakCmd)
 }

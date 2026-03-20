@@ -12,14 +12,16 @@ import (
 
 // Row represents a single prompt row from the spreadsheet.
 type Row struct {
-	LineNumber int
-	Filename   string
-	Voice      string
-	Text       string
-	IsSSML     bool
-	SampleRate int
-	Encoding   string
-	Notes      string
+	LineNumber   int
+	Filename     string
+	Voice        string
+	Text         string
+	IsSSML       bool
+	SampleRate   int
+	Encoding     string
+	Notes        string
+	Style        string // voice steering prompt (optional, Gemini voices with GCP auth)
+	LanguageCode string // language code override (optional, Gemini voices)
 }
 
 // ParseFile reads an xlsx or csv file and returns prompt rows.
@@ -110,6 +112,12 @@ func parseRawRows(records [][]string) ([]Row, error) {
 
 		// Encoding override
 		row.Encoding = getField(record, 5)
+
+		// Style (optional column 7, index 7 — after Notes at index 6)
+		row.Style = getField(record, 7)
+
+		// Language (optional column 8, index 8)
+		row.LanguageCode = getField(record, 8)
 
 		rows = append(rows, row)
 	}

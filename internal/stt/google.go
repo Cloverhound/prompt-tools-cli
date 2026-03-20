@@ -16,16 +16,18 @@ import (
 const googleSTTEndpoint = "https://speech.googleapis.com/v1"
 
 type GoogleSTT struct {
-	apiKey string
+	apiKey      string
+	bearerToken string
+	project     string
 }
 
-func NewGoogleSTT(apiKey string) provider.STTProvider {
-	return &GoogleSTT{apiKey: apiKey}
+func NewGoogleSTT(auth provider.AuthConfig) provider.STTProvider {
+	return &GoogleSTT{apiKey: auth.APIKey, bearerToken: auth.BearerToken, project: auth.Project}
 }
 
 func init() {
-	provider.RegisterSTT("google", func(apiKey string) provider.STTProvider {
-		return NewGoogleSTT(apiKey)
+	provider.RegisterSTT("google", func(auth provider.AuthConfig) provider.STTProvider {
+		return NewGoogleSTT(auth)
 	})
 }
 
@@ -71,13 +73,31 @@ func (g *GoogleSTT) Transcribe(req *provider.STTRequest) (*provider.Transcriptio
 		return nil, err
 	}
 
-	url := fmt.Sprintf("%s/speech:recognize?key=%s", googleSTTEndpoint, g.apiKey)
-
-	if config.Debug() {
-		fmt.Printf("[DEBUG] POST %s\n", url)
+	var httpReq *http.Request
+	if g.bearerToken != "" {
+		httpReq, err = http.NewRequest("POST", fmt.Sprintf("%s/speech:recognize", googleSTTEndpoint), strings.NewReader(string(bodyJSON)))
+		if err != nil {
+			return nil, err
+		}
+		httpReq.Header.Set("Content-Type", "application/json")
+		httpReq.Header.Set("Authorization", "Bearer "+g.bearerToken)
+	} else {
+		url := fmt.Sprintf("%s/speech:recognize?key=%s", googleSTTEndpoint, g.apiKey)
+		httpReq, err = http.NewRequest("POST", url, strings.NewReader(string(bodyJSON)))
+		if err != nil {
+			return nil, err
+		}
+		httpReq.Header.Set("Content-Type", "application/json")
+	}
+	if g.project != "" {
+		httpReq.Header.Set("x-goog-user-project", g.project)
 	}
 
-	resp, err := http.Post(url, "application/json", strings.NewReader(string(bodyJSON)))
+	if config.Debug() {
+		fmt.Printf("[DEBUG] POST %s\n", httpReq.URL.String())
+	}
+
+	resp, err := http.DefaultClient.Do(httpReq)
 	if err != nil {
 		return nil, fmt.Errorf("Google STT request failed: %w", err)
 	}
