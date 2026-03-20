@@ -59,6 +59,7 @@ prompt-tools version                      # Print version
 prompt-tools update                       # Self-update from GitHub releases
 prompt-tools config <subcommand>          # Manage configuration
 prompt-tools voices [flags]          # List available TTS voices
+prompt-tools gemini-guide                 # Gemini TTS voice steering guide
 prompt-tools speak [text] [flags]         # Generate speech from text
 prompt-tools bulk <subcommand> [flags]    # Bulk prompt generation
 prompt-tools transcribe [flags]           # Transcribe a single audio file

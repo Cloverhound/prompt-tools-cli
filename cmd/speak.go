@@ -31,6 +31,7 @@ Gemini voices automatically use the Generative Language API. Override model with
 
 With GCP OAuth2 auth (gcloud auth application-default login), Gemini voices use the
 Cloud TTS endpoint which enables --style for voice steering and server-side encoding.
+See 'prompt-tools gemini-guide' for detailed steering instructions and bracket tags.
 
 ElevenLabs voices can be specified by name (e.g., Sarah, Roger) or voice ID.
 ElevenLabs models (override with --model):
