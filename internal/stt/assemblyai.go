@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -145,7 +146,7 @@ func (a *AssemblyAISTT) upload(data []byte) (string, error) {
 }
 
 func (a *AssemblyAISTT) poll(transcriptID string, timestamps bool) (*provider.TranscriptionResult, error) {
-	url := fmt.Sprintf("%s/transcript/%s", assemblyAIEndpoint, transcriptID)
+	url := fmt.Sprintf("%s/transcript/%s", assemblyAIEndpoint, url.PathEscape(transcriptID))
 
 	for {
 		if config.Debug() {

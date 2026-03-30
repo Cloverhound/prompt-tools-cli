@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/Cloverhound/prompt-tools-cli/internal/audio"
@@ -69,13 +70,13 @@ func (e *ElevenLabsTTS) Synthesize(req *provider.TTSRequest) (*provider.TTSResul
 		return nil, err
 	}
 
-	url := fmt.Sprintf("%s/text-to-speech/%s?output_format=%s", elevenlabsEndpoint, voiceID, outputFormat)
+	reqURL := fmt.Sprintf("%s/text-to-speech/%s?output_format=%s", elevenlabsEndpoint, url.PathEscape(voiceID), url.QueryEscape(outputFormat))
 
 	if config.Debug() {
-		fmt.Printf("[DEBUG] POST %s\n", url)
+		fmt.Printf("[DEBUG] POST %s\n", reqURL)
 	}
 
-	httpReq, err := http.NewRequest("POST", url, strings.NewReader(string(bodyJSON)))
+	httpReq, err := http.NewRequest("POST", reqURL, strings.NewReader(string(bodyJSON)))
 	if err != nil {
 		return nil, err
 	}

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"unicode"
 
@@ -181,7 +182,7 @@ func (g *GoogleTTS) synthesizeCloudTTSGemini(req *provider.TTSRequest) (*provide
 // If explicit, uses that. Otherwise queries the API for available TTS models
 // and picks the best one (prefers "pro" over "flash").
 func (g *GoogleTTS) resolveGeminiModel() (string, error) {
-	url := fmt.Sprintf("%s/models?key=%s", geminiAPIEndpoint, g.apiKey)
+	url := fmt.Sprintf("%s/models?key=%s", geminiAPIEndpoint, url.QueryEscape(g.apiKey))
 	resp, err := http.Get(url)
 	if err != nil {
 		return "", fmt.Errorf("listing Gemini models: %w", err)
@@ -279,7 +280,7 @@ func (g *GoogleTTS) synthesizeGemini(req *provider.TTSRequest) (*provider.TTSRes
 		return nil, err
 	}
 
-	url := fmt.Sprintf("%s/models/%s:generateContent?key=%s", geminiAPIEndpoint, model, g.apiKey)
+	url := fmt.Sprintf("%s/models/%s:generateContent?key=%s", geminiAPIEndpoint, url.PathEscape(model), url.QueryEscape(g.apiKey))
 
 	if config.Debug() {
 		fmt.Printf("[DEBUG] POST %s/models/%s:generateContent\n", geminiAPIEndpoint, model)
@@ -417,7 +418,7 @@ func (g *GoogleTTS) synthesizeCloudTTS(req *provider.TTSRequest) (*provider.TTSR
 		httpReq.Header.Set("Content-Type", "application/json")
 		httpReq.Header.Set("Authorization", "Bearer "+g.bearerToken)
 	} else {
-		url := fmt.Sprintf("%s/text:synthesize?key=%s", googleTTSEndpoint, g.apiKey)
+		url := fmt.Sprintf("%s/text:synthesize?key=%s", googleTTSEndpoint, url.QueryEscape(g.apiKey))
 		httpReq, err = http.NewRequest("POST", url, strings.NewReader(string(bodyJSON)))
 		if err != nil {
 			return nil, err
@@ -467,7 +468,7 @@ func (g *GoogleTTS) ListVoices(languageCode string) ([]provider.Voice, error) {
 	if g.bearerToken != "" {
 		reqURL := fmt.Sprintf("%s/voices", googleTTSEndpoint)
 		if languageCode != "" {
-			reqURL += "?languageCode=" + languageCode
+			reqURL += "?languageCode=" + url.QueryEscape(languageCode)
 		}
 		httpReq, err = http.NewRequest("GET", reqURL, nil)
 		if err != nil {
@@ -475,9 +476,9 @@ func (g *GoogleTTS) ListVoices(languageCode string) ([]provider.Voice, error) {
 		}
 		httpReq.Header.Set("Authorization", "Bearer "+g.bearerToken)
 	} else {
-		reqURL := fmt.Sprintf("%s/voices?key=%s", googleTTSEndpoint, g.apiKey)
+		reqURL := fmt.Sprintf("%s/voices?key=%s", googleTTSEndpoint, url.QueryEscape(g.apiKey))
 		if languageCode != "" {
-			reqURL += "&languageCode=" + languageCode
+			reqURL += "&languageCode=" + url.QueryEscape(languageCode)
 		}
 		httpReq, err = http.NewRequest("GET", reqURL, nil)
 		if err != nil {
