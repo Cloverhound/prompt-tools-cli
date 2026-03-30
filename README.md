@@ -297,37 +297,38 @@ prompt-tools completion fish > ~/.config/fish/completions/prompt-tools.fish
 
 ## Coding Agent Skill
 
-A skill file is included at `skill/SKILL.md` that teaches AI coding agents how to use the CLI. Install it for your agent of choice:
+A skill file is included at `skill/SKILL.md` that teaches AI coding agents how to use the CLI.
 
-**Claude Code (macOS/Linux):**
+### Automatic Setup
+
+The installer and `prompt-tools post-install` command will offer to install the skill for detected agents (Claude Code, Claude Cowork, OpenAI Codex, Cursor) via an interactive menu. Skills are also kept up to date when you run `prompt-tools update`.
+
+### Manual Setup
+
+If you prefer to install manually:
+
+**Claude Code:**
 ```bash
 mkdir -p ~/.claude/skills/prompt-tools
 curl -fsSL https://raw.githubusercontent.com/Cloverhound/prompt-tools-cli/main/skill/SKILL.md \
   -o ~/.claude/skills/prompt-tools/SKILL.md
 ```
 
-**Claude Code (Windows PowerShell):**
-```powershell
-New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.claude\skills\prompt-tools"
-Invoke-WebRequest -Uri "https://raw.githubusercontent.com/Cloverhound/prompt-tools-cli/main/skill/SKILL.md" `
-  -OutFile "$env:USERPROFILE\.claude\skills\prompt-tools\SKILL.md"
-```
-
-**OpenAI Codex (macOS/Linux):**
+**OpenAI Codex:**
 ```bash
-mkdir -p ~/.agents/skills/prompt-tools
+mkdir -p ~/.codex/skills/prompt-tools
 curl -fsSL https://raw.githubusercontent.com/Cloverhound/prompt-tools-cli/main/skill/SKILL.md \
-  -o ~/.agents/skills/prompt-tools/SKILL.md
+  -o ~/.codex/skills/prompt-tools/SKILL.md
 ```
 
-**Cursor (macOS/Linux):**
+**Cursor:**
 ```bash
 mkdir -p ~/.cursor/skills/prompt-tools
 curl -fsSL https://raw.githubusercontent.com/Cloverhound/prompt-tools-cli/main/skill/SKILL.md \
   -o ~/.cursor/skills/prompt-tools/SKILL.md
 ```
 
-If the `prompt-tools` binary isn't in your PATH, update the binary path inside the installed skill file.
+**Claude Cowork:** Run `prompt-tools post-install` to generate the ZIP, then upload at: Claude Desktop → Cowork tab → Customize → Skills → + → Upload a skill.
 
 For project-specific installation, place the skill file in your project directory instead of the user-level folder.
 
